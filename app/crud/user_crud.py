@@ -6,13 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.models import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserRegister
 from app.core.security import get_password_hash
 
 
 class UserCRUD:
     @staticmethod
-    async def create_user(db: AsyncSession, payload: UserCreate) -> User:
+    async def create_user(db: AsyncSession, payload: UserRegister) -> User:
         user = User(
             username=payload.username,
             email=payload.email,

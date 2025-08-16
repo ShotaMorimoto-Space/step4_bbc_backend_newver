@@ -1,4 +1,3 @@
-# app/schemas/section.py
 from pydantic import BaseModel, Field, field_serializer
 from typing import List, Optional
 from datetime import datetime
@@ -17,9 +16,51 @@ class MarkupObject(BaseModel):
     size: Optional[float] = None
 
 
+# ---- Coaching Session ----
+class CoachingSessionBase(BaseModel):
+    video_id: UUID
+    user_id: UUID
+    coach_id: UUID
+    status: str  # "pending" | "in_progress" | "completed"
+
+class CoachingSessionCreate(BaseModel):
+    video_id: UUID
+    coach_id: UUID
+
+class CoachingSessionResponse(CoachingSessionBase):
+    session_id: UUID
+    requested_at: datetime
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    @field_serializer("requested_at")
+    def _ser_req(self, dt: datetime) -> datetime:
+        return to_jst(dt)
+
+    @field_serializer("completed_at")
+    def _ser_compl(self, dt: Optional[datetime]) -> Optional[datetime]:
+        return to_jst(dt) if dt else None
+
+    @field_serializer("created_at")
+    def _ser_cr(self, dt: datetime) -> datetime:
+        return to_jst(dt)
+
+    @field_serializer("updated_at")
+    def _ser_upd(self, dt: datetime) -> datetime:
+        return to_jst(dt)
+
+    model_config = {"from_attributes": True}
+
+class CoachingSessionUpdate(BaseModel):
+    status: Optional[str] = None
+    completed_at: Optional[datetime] = None
+
+
 # ---- SectionGroup ----
 class SectionGroupBase(BaseModel):
     video_id: UUID
+    session_id: UUID   # ★ 追加: どのセッションに属するか
 
 class SectionGroupCreate(SectionGroupBase):
     pass

@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, field_serializer
 from typing import Optional
 from datetime import date, datetime
 from app.utils.timezone import to_jst
+from uuid import UUID
 
 class CoachCreate(BaseModel):
     coachname: str
@@ -52,7 +53,7 @@ class CoachUpdate(BaseModel):
     lesson_rank: Optional[str] = None
 
 class CoachResponse(BaseModel):
-    coach_id: str
+    coach_id: UUID
     usertype: str
     coachname: str
     email: EmailStr
@@ -89,7 +90,7 @@ class CoachResponse(BaseModel):
         from_attributes = True
 
 class CoachOut(BaseModel):
-    coach_id: str
+    coach_id: UUID
     coachname: str
     email: EmailStr
     created_at: datetime

@@ -3,6 +3,8 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime, date
+import uuid
+from uuid import UUID
 
 from sqlalchemy import (
     Column,
@@ -17,6 +19,7 @@ from sqlalchemy import (
     Enum as SQLEnum,
     TypeDecorator,
     CHAR,
+    Boolean,
 )
 from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -64,6 +67,7 @@ class User(Base):
     username = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
+    gender = Column(String(10), nullable=True)
     line_user_id = Column(String(255), unique=True, nullable=True)
 
     profile_picture_url = Column(Text, nullable=True)
@@ -123,6 +127,30 @@ class Coach(Base):
     setting_3 = Column(String(50), nullable=True)
     lesson_rank = Column(String(50), nullable=True)
 
+# -------- Location --------
+class Location(Base):
+    __tablename__ = "locations"
+
+    location_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    location_name = Column(String(255), nullable=False)
+    state = Column(String(50), nullable=False)
+    address1 = Column(String(255), nullable=False)
+    address2 = Column(String(255))
+    zipcode = Column(String(10))
+    phone_number = Column(String(50))
+    website_url = Column(Text)
+    opening_hours = Column(String(255))
+    capacity = Column(Integer)
+    description = Column(Text)
+    image_url_main = Column(Text)
+    image_url_sub1 = Column(Text)
+    image_url_sub2 = Column(Text)
+    image_url_sub3 = Column(Text)
+    image_url_sub4 = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 # -------- Videos --------
 class Video(Base):
     __tablename__ = "videos"
@@ -134,12 +162,37 @@ class Video(Base):
     club_type = Column(String(50), nullable=True)
     swing_form = Column(String(50), nullable=True)
     swing_note = Column(Text, nullable=True)
+
+    is_pinned = Column(Boolean, default=False)
+    is_reviewed = Column(Boolean, default=False)
+
     section_group_id = Column(GUID(), nullable=True)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    section_groups = relationship("SectionGroup", back_populates="video")
+
+
+# -------- Coaching Session (動画添削依頼) --------
+class CoachingSession(Base):
+    __tablename__ = "coaching_sessions"
+
+    session_id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.user_id"), nullable=False)
+    coach_id = Column(GUID(), ForeignKey("coaches.coach_id"), nullable=False)
+    video_id = Column(GUID(), ForeignKey("videos.video_id"), nullable=False)
+
+    status = Column(String(50), nullable=False, default="pending")  # pending / in_progress / completed
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # リレーション
+    video = relationship("Video", back_populates="sessions")
+    coach = relationship("Coach")
+    user = relationship("User")
+    section_groups = relationship("SectionGroup", back_populates="session")
 
 # -------- Coaching Reservation --------
 class CoachingReservation(Base):
@@ -164,6 +217,7 @@ class SectionGroup(Base):
 
     section_group_id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     video_id = Column(GUID(), ForeignKey("videos.video_id"), nullable=False)
+    session_id = Column(GUID(), ForeignKey("coaching_sessions.session_id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # 相手機能取り込み用（任意）
@@ -174,6 +228,7 @@ class SectionGroup(Base):
     feedback_created_at = Column(DateTime(timezone=True), nullable=True)
 
     video = relationship("Video", back_populates="section_groups")
+    session = relationship("CoachingSession", back_populates="section_groups")
     sections = relationship("SwingSection", back_populates="section_group")
 
 # -------- Swing Sections --------
@@ -198,7 +253,7 @@ DATABASE_URL = settings.assemble_db_url()  # mysql+asyncmy://... を返す想定
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=(settings.ENV.lower() == "development"),
+    echo=(settings.env.lower() == "development"),
     pool_size=5,
     max_overflow=10,
     pool_recycle=1800,

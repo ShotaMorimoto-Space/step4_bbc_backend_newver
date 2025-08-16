@@ -9,52 +9,65 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # --- DB: どちらかで設定可 ---
-    # 直接URLを置く場合（任意・無ければ下の分割項目から生成）
-    DATABASE_URL: Optional[str] = None
+    # ===== App =====
+    env: str = "development"
+    log_level: str = "INFO"
 
-    # 分割指定（あなたの .env に合わせて既に定義済み）
-    DATABASE_HOST: str = "localhost"
-    DATABASE_PORT: int = 3306
-    DATABASE_NAME: str = "test"
-    DATABASE_USERNAME: str = "root"
-    DATABASE_PASSWORD: str = ""
+    # ===== DB =====
+    database_url: Optional[str] = None
+    database_host: str = "localhost"
+    database_port: int = 3306
+    database_name: str = "test"
+    database_username: str = "root"
+    database_password: str = ""
 
-    # --- JWT ---
-    SECRET_KEY: str = "dev-secret-change-me"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    # ===== JWT / Auth =====
+    secret_key: str = "dev-secret-change-me"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
 
-    # --- Azure Blob ---
-    AZURE_STORAGE_CONNECTION_STRING: Optional[str] = None
-    AZURE_STORAGE_CONTAINER: str = "bbc-test"
+    # ===== Azure Blob Storage =====
+    azure_storage_connection_string: Optional[str] = None
+    azure_video_container: Optional[str] = None
+    azure_thumbnail_container: Optional[str] = None
+    azure_section_image_container: Optional[str] = None
+    azure_audio_container: Optional[str] = None
+    public_cdn_base_url: Optional[str] = None
 
-    # --- Misc ---
-    FRONTEND_ORIGINS: str = "http://localhost:3000"
-    ENV: str = "development"
+    # ===== OpenAI =====
+    openai_api_key: Optional[str] = None
+
+    # ===== LINE Messaging API =====
+    line_channel_secret: Optional[str] = None
+    line_channel_access_token: Optional[str] = None
+    line_verify_signature: bool = True
+    line_reply_enabled: bool = True
+
+    # ===== CORS =====
+    cors_allowed_origins: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        case_sensitive=True,
+        case_sensitive=False,  # ★ 大文字・小文字の差を吸収する
         extra="ignore",
     )
 
     def assemble_db_url(self) -> str:
         """
-        DATABASE_URL があればそれを使う。なければ分割値から async DSN を構築。
-        例: mysql+asyncmy://user:pass@host:3306/db
+        database_url があればそれを使う。
+        無ければ分割値から DSN を構築。
         """
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        password = quote_plus(self.DATABASE_PASSWORD or "")
+        if self.database_url:
+            return self.database_url
+        password = quote_plus(self.database_password or "")
         return (
-            f"mysql+asyncmy://{self.DATABASE_USERNAME}:{password}"
-            f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            f"mysql+asyncmy://{self.database_username}:{password}"
+            f"@{self.database_host}:{self.database_port}/{self.database_name}"
         )
 
     @property
     def allowed_origins(self) -> List[str]:
-        return [o.strip() for o in self.FRONTEND_ORIGINS.split(",") if o.strip()]
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
 
 
 @lru_cache()

@@ -27,7 +27,8 @@ from .reservation import (
 )
 
 # --- User ---
-from .user import UserCreate, UserResponse, UserMini
+from .user import UserRegister, UserProfileUpdate, UserResponse, UserMini
+
 
 # --- Coach ---
 from .coach import CoachCreate, CoachResponse, CoachOut

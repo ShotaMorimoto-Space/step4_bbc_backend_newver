@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.services.storage import storage_service
 
 # Routers
-from app.routers import auth, user, video, coach, upload, transcription, line
+from app.routers import auth, user, video, coach, upload, transcription, line, location
 
 
 load_dotenv()
@@ -59,6 +59,7 @@ app.include_router(coach.router,          prefix="/api/v1",       tags=["coach"]
 app.include_router(upload.router,         prefix="/api/v1",       tags=["upload"])
 app.include_router(transcription.router,  prefix="/api/v1",       tags=["transcription"])
 app.include_router(line.router, prefix="/api/v1/line", tags=["line"])
+app.include_router(location.router)
 
 # ---- Health / Root ----
 @app.get("/")

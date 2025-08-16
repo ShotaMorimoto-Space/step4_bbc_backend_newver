@@ -13,9 +13,10 @@ class VideoBase(BaseModel):
     video_url: str
     thumbnail_url: Optional[str] = None
     club_type: Optional[str] = None
-    # 内部名（既存実装）
     swing_form: Optional[str] = None
     swing_note: Optional[str] = None
+    is_pinned: bool = False
+    is_reviewed: bool = False
 
 class VideoCreate(VideoBase):
     # 相手ペイロードの別名をここで吸収（内部は swing_form / swing_note）

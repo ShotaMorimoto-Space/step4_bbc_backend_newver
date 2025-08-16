@@ -10,8 +10,14 @@ from app.core.config import settings
 from app.core.jwt import create_access_token
 from app.core.security import verify_password, get_password_hash
 from app.deps import get_current_user_strict
-from app.schemas.user import UserCreate, UserResponse, UserMini
-from app.schemas.coach import CoachCreate, CoachResponse, CoachOut
+from uuid import UUID
+from app.schemas.user import (
+    UserRegister,
+    UserProfileUpdate,
+    UserResponse,
+    UserMini,
+)
+from app.schemas.coach import CoachCreate, CoachResponse, CoachOut,CoachUpdate
 from sqlalchemy import select
 from app.crud import user_crud
 
@@ -22,41 +28,7 @@ router = APIRouter(tags=["auth"])
 # Register (User)
 # ---------------------------
 @router.post("/register/user", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(payload: UserCreate, db: AsyncSession = Depends(get_db)):
-    # 1) line_user_id が来ていて、既に LINE でゲストが存在 → 昇格
-    if payload.line_user_id:
-        u_line = await user_crud.get_by_line_user_id(db, payload.line_user_id)
-        if u_line:
-            # email重複チェック（自分以外）
-            exists = (await db.execute(
-                select(User).where(User.email == payload.email, User.user_id != u_line.user_id)
-            )).scalar_one_or_none()
-            if exists:
-                raise HTTPException(400, "このメールアドレスは既に使われています")
-
-            u_line.username = payload.username
-            u_line.email = payload.email
-            u_line.password_hash = get_password_hash(payload.password)
-            u_line.usertype = payload.usertype or "user"
-            u_line.profile_picture_url = payload.profile_picture_url
-            u_line.bio = payload.bio
-            u_line.birthday = payload.birthday
-            u_line.golf_score_ave = payload.golf_score_ave
-            u_line.golf_exp = payload.golf_exp
-            u_line.zip_code = payload.zip_code
-            u_line.state = payload.state
-            u_line.address1 = payload.address1
-            u_line.address2 = payload.address2
-            u_line.sport_exp = payload.sport_exp
-            u_line.industry = payload.industry
-            u_line.job_title = payload.job_title
-            u_line.position = payload.position
-
-            await db.commit()
-            await db.refresh(u_line)
-            return u_line
-
-    # 2) 通常の新規作成（既存チェック）
+async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_db)):
     u = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
     if u:
         raise HTTPException(400, "既に登録されたメールアドレスです")
@@ -64,27 +36,30 @@ async def register_user(payload: UserCreate, db: AsyncSession = Depends(get_db))
     db_user = User(
         username=payload.username,
         email=payload.email,
-        password_hash=get_password_hash(payload.password),
-        usertype=payload.usertype or "user",
-        line_user_id=payload.line_user_id,
-        profile_picture_url=payload.profile_picture_url,
-        bio=payload.bio,
+        gender=payload.gender,
         birthday=payload.birthday,
-        golf_score_ave=payload.golf_score_ave,
-        golf_exp=payload.golf_exp,
-        zip_code=payload.zip_code,
-        state=payload.state,
-        address1=payload.address1,
-        address2=payload.address2,
-        sport_exp=payload.sport_exp,
-        industry=payload.industry,
-        job_title=payload.job_title,
-        position=payload.position,
+        password_hash=get_password_hash(payload.password),
+        usertype="user",
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
-    return db_user
+
+    return UserResponse.model_validate(db_user, from_attributes=True)
+
+@router.patch("/user/{user_id}/profile", response_model=UserResponse)
+async def update_user_profile(user_id: UUID, payload: UserProfileUpdate, db: AsyncSession = Depends(get_db)):
+    user = (await db.execute(select(User).where(User.user_id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "ユーザーが見つかりません")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(user, key, value)
+
+    await db.commit()
+    await db.refresh(user)
+
+    return UserResponse.model_validate(user, from_attributes=True)
 
 # ---------------------------
 # Register (Coach)
@@ -124,6 +99,20 @@ async def register_coach(payload: CoachCreate, db: AsyncSession = Depends(get_db
     await db.commit()
     await db.refresh(db_coach)
     return db_coach
+
+@router.patch("/coach/{coach_id}/profile", response_model=CoachResponse)
+async def update_coach_profile(coach_id: UUID, payload: CoachUpdate, db: AsyncSession = Depends(get_db)):
+    coach = (await db.execute(select(Coach).where(Coach.coach_id == coach_id))).scalar_one_or_none()
+    if not coach:
+        raise HTTPException(404, "コーチが見つかりません")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(coach, key, value)
+
+    await db.commit()
+    await db.refresh(coach)
+
+    return CoachResponse.model_validate(coach, from_attributes=True)
 
 
 # ---------------------------

@@ -15,6 +15,13 @@ from app.schemas.video import (
     SwingSectionResponse,
 )
 from app.crud import video_crud, section_group_crud, swing_section_crud
+from app.schemas.section import (
+    CoachingSessionCreate,
+    CoachingSessionUpdate,
+    CoachingSessionResponse,
+)
+from app import models
+from sqlalchemy import select
 
 router = APIRouter(tags=["videos"])
 
@@ -179,3 +186,99 @@ async def search_videos(
         raise HTTPException(status_code=400, detail="無効なユーザーIDです")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"動画検索に失敗しました: {str(e)}")
+
+# --- セッション作成 ---
+@router.post("/video/{video_id}/session", response_model=CoachingSessionResponse)
+async def create_session(
+    video_id: UUID,
+    payload: CoachingSessionCreate,
+    db: AsyncSession = Depends(get_database),
+):
+    """
+    Create a new coaching session request for a video
+    """
+    try:
+        new_session = models.CoachingSession(
+            video_id=video_id,
+            user_id=payload.user_id,
+            coach_id=payload.coach_id,
+        )
+        db.add(new_session)
+        await db.commit()
+        await db.refresh(new_session)
+        return new_session
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"セッション作成に失敗しました: {str(e)}")
+
+
+# --- 動画に紐づくセッション一覧 ---
+@router.get("/video/{video_id}/sessions", response_model=List[CoachingSessionResponse])
+async def list_sessions_for_video(
+    video_id: UUID,
+    db: AsyncSession = Depends(get_database),
+):
+    """
+    Get all coaching sessions for a specific video
+    """
+    try:
+        result = await db.execute(
+            select(models.CoachingSession).where(models.CoachingSession.video_id == video_id)
+        )
+        return result.scalars().all()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"セッション一覧の取得に失敗しました: {str(e)}")
+
+
+# --- セッション詳細 ---
+@router.get("/session/{session_id}", response_model=CoachingSessionResponse)
+async def get_session(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_database),
+):
+    """
+    Get details of a specific session
+    """
+    session = await db.get(models.CoachingSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="セッションが見つかりません")
+    return session
+
+
+# --- セッション更新 ---
+@router.put("/session/{session_id}", response_model=CoachingSessionResponse)
+async def update_session(
+    session_id: UUID,
+    payload: CoachingSessionUpdate,
+    db: AsyncSession = Depends(get_database),
+):
+    """
+    Update session status or info
+    """
+    session = await db.get(models.CoachingSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="セッションが見つかりません")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(session, key, value)
+
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+# --- セッション削除 (任意) ---
+@router.delete("/session/{session_id}")
+async def delete_session(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_database),
+):
+    """
+    Delete a coaching session (if allowed)
+    """
+    session = await db.get(models.CoachingSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="セッションが見つかりません")
+
+    await db.delete(session)
+    await db.commit()
+    return {"message": "セッションを削除しました"}
