@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import os
 import uuid
 from datetime import datetime, date
 import uuid
@@ -171,6 +172,9 @@ class Video(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    section_groups = relationship("SectionGroup", back_populates="video")
+    sessions = relationship("CoachingSession", back_populates="video")
+
 
 
 # -------- Coaching Session (動画添削依頼) --------
@@ -249,7 +253,9 @@ class SwingSection(Base):
     section_group = relationship("SectionGroup", back_populates="sections")
 
 # ---------- Async Engine / Session ----------
-DATABASE_URL = settings.assemble_db_url()  # mysql+asyncmy://... を返す想定
+DATABASE_URL = settings.assemble_db_url()
+
+ssl_cert_path = os.path.join(os.path.dirname(__file__), "DigiCertGlobalRootCA.crt.pem")
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -258,6 +264,11 @@ engine = create_async_engine(
     max_overflow=10,
     pool_recycle=1800,
     pool_pre_ping=True,
+    connect_args={
+        "ssl": {
+            "ca": ssl_cert_path
+        }
+    },
 )
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
