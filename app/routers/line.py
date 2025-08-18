@@ -16,12 +16,13 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.models import get_db, User
+from app.models import User
 from app.core.config import settings
 from app.core.jwt import create_access_token
 from app.core.security import get_password_hash
 from app.utils.logger import logger
 from app.services.storage import storage_service  # 画像保存で使用（動画はTODO）
+from app.deps import get_database
 
 router = APIRouter()
 
@@ -110,7 +111,7 @@ async def line_reply(reply_token: str, texts: list[str]) -> None:
 async def webhook(
     request: Request,
     x_line_signature: Optional[str] = Header(None, alias="X-Line-Signature"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_database),
 ):
     body_bytes = await request.body()
 
@@ -205,7 +206,7 @@ class LineLoginRequest(BaseModel):
 
 
 @router.post("/login")
-async def line_login(payload: LineLoginRequest, db: AsyncSession = Depends(get_db)):
+async def line_login(payload: LineLoginRequest, db: AsyncSession = Depends(get_database)):
     """
     - 本番：id_token を検証 → sub(=line_user_id) 抽出 → ゲスト確保/昇格 → JWT発行
     - 開発：line_user_id を直接受けてゲスト確保 → JWT発行

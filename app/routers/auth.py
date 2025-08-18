@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import get_db, User, Coach
+from app.models import User, Coach
 from app.core.config import settings
 from app.core.jwt import create_access_token
 from app.core.security import verify_password, get_password_hash
-from app.deps import get_current_user_strict
+from app.deps import get_current_user_strict, get_database
 from uuid import UUID
 from app.schemas.user import (
     UserRegister,
@@ -28,7 +28,7 @@ router = APIRouter(tags=["auth"])
 # Register (User)
 # ---------------------------
 @router.post("/register/user", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_db)):
+async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_database)):
     u = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
     if u:
         raise HTTPException(400, "既に登録されたメールアドレスです")
@@ -48,7 +48,7 @@ async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_db
     return UserResponse.model_validate(db_user, from_attributes=True)
 
 @router.patch("/user/{user_id}/profile", response_model=UserResponse)
-async def update_user_profile(user_id: UUID, payload: UserProfileUpdate, db: AsyncSession = Depends(get_db)):
+async def update_user_profile(user_id: UUID, payload: UserProfileUpdate, db: AsyncSession = Depends(get_database)):
     user = (await db.execute(select(User).where(User.user_id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(404, "ユーザーが見つかりません")
@@ -65,7 +65,7 @@ async def update_user_profile(user_id: UUID, payload: UserProfileUpdate, db: Asy
 # Register (Coach)
 # ---------------------------
 @router.post("/register/coach", response_model=CoachResponse, status_code=status.HTTP_201_CREATED)
-async def register_coach(payload: CoachCreate, db: AsyncSession = Depends(get_db)):
+async def register_coach(payload: CoachCreate, db: AsyncSession = Depends(get_database)):
     u = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
     c = (await db.execute(select(Coach).where(Coach.email == payload.email))).scalar_one_or_none()
     if u or c:
@@ -101,7 +101,7 @@ async def register_coach(payload: CoachCreate, db: AsyncSession = Depends(get_db
     return db_coach
 
 @router.patch("/coach/{coach_id}/profile", response_model=CoachResponse)
-async def update_coach_profile(coach_id: UUID, payload: CoachUpdate, db: AsyncSession = Depends(get_db)):
+async def update_coach_profile(coach_id: UUID, payload: CoachUpdate, db: AsyncSession = Depends(get_database)):
     coach = (await db.execute(select(Coach).where(Coach.coach_id == coach_id))).scalar_one_or_none()
     if not coach:
         raise HTTPException(404, "コーチが見つかりません")
@@ -121,7 +121,7 @@ async def update_coach_profile(coach_id: UUID, payload: CoachUpdate, db: AsyncSe
 @router.post("/token")
 async def login_any(
     form: OAuth2PasswordRequestForm = Depends(),  # username に email を入れて送る
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_database),
 ):
     email = form.username
 
@@ -146,7 +146,7 @@ async def login_any(
 # Me
 # ---------------------------
 @router.get("/me")
-async def me(sub: str = Depends(get_current_user_strict), db: AsyncSession = Depends(get_db)):
+async def me(sub: str = Depends(get_current_user_strict), db: AsyncSession = Depends(get_database)):
     # sub は JWT の "sub"（= user_id or coach_id）
     u = (await db.execute(select(User).where(User.user_id == sub))).scalar_one_or_none()
     if u:
