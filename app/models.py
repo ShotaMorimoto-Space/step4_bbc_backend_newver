@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import enum
 import os
-import ssl
 import uuid
 from datetime import datetime, date
 import uuid
 from uuid import UUID
+import ssl
 
 from sqlalchemy import (
     Column,
