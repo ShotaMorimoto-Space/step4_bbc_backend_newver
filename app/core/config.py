@@ -61,7 +61,7 @@ class Settings(BaseSettings):
             return self.database_url
         password = quote_plus(self.database_password or "")
         return (
-            f"mysql+aiomysql://{self.database_username}:{password}"
+            f"mysql+asyncmy://{self.database_username}:{password}"
             f"@{self.database_host}:{self.database_port}/{self.database_name}"
         )
 

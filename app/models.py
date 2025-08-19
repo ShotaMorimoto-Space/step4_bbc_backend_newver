@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 import os
+import ssl
 import uuid
 from datetime import datetime, date
 import uuid
@@ -255,7 +256,13 @@ class SwingSection(Base):
 # ---------- Async Engine / Session ----------
 DATABASE_URL = settings.assemble_db_url()
 
-ssl_cert_path = os.path.join(os.path.dirname(__file__), "DigiCertGlobalRootCA.crt.pem")
+pem = os.path.join(os.path.dirname(__file__), "DigiCertGlobalRootCA.crt.pem")
+if os.path.exists(pem):
+    ssl_ctx = ssl.create_default_context(cafile=pem)
+else:
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE  # 証明書なしでTLS必須環境を満たす
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -264,11 +271,7 @@ engine = create_async_engine(
     max_overflow=10,
     pool_recycle=1800,
     pool_pre_ping=True,
-    connect_args={
-        "ssl": {
-            "ca": ssl_cert_path
-        }
-    },
+    connect_args={"ssl": ssl_ctx},
 )
 
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
