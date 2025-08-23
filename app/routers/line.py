@@ -227,7 +227,7 @@ async def line_login(payload: LineLoginRequest, db: AsyncSession = Depends(get_d
     # JWT 発行
     access_token = create_access_token(
         data={"sub": str(user.user_id), "role": "user"},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
     )
     return {
         "access_token": access_token,
