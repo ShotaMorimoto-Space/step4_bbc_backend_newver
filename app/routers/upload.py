@@ -90,7 +90,7 @@ async def upload_video(
         from io import BytesIO
         video_bytes_for_upload = BytesIO(video_content)
         logger.info("動画をストレージにアップロード中...")
-        video_url = await storage_service.upload_video(
+        video_url = storage_service.upload_video(
             video_bytes_for_upload,
             video_file.filename or "video.mp4"
         )
@@ -107,7 +107,7 @@ async def upload_video(
             # Create BytesIO object for thumbnail generation
             video_bytes_for_thumbnail = BytesIO(video_content)
             
-            thumbnail_data = await thumbnail_service.generate_thumbnail(
+            thumbnail_data = thumbnail_service.generate_thumbnail(
                 video_bytes_for_thumbnail,
                 video_file.filename or "video.mp4"
             )
@@ -140,7 +140,7 @@ async def upload_video(
         # Create video in database
         from app.schemas import VideoCreate
         video_create = VideoCreate(**video_data)
-        db_video = await video_crud.create_video(db, video_create)
+        db_video = video_crud.create_video(db, video_create)
         logger.info(f"データベース保存完了: video_id={db_video.video_id}")
         
         return db_video
@@ -167,7 +167,7 @@ async def upload_thumbnail(
     """
     try:
         # Check if video exists
-        video = await video_crud.get_video(db, video_id)
+        video = video_crud.get_video(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
         
@@ -184,7 +184,7 @@ async def upload_thumbnail(
         # Update video with thumbnail URL
         from app.schemas import VideoUpdate
         video_update = VideoUpdate(thumbnail_url=thumbnail_url)
-        updated_video = await video_crud.update_video(db, video_id, video_update)
+        updated_video = video_crud.update_video(db, video_id, video_update)
         
         return {
             "message": "サムネイルが正常にアップロードされました",
@@ -208,7 +208,7 @@ async def get_upload_status(
     - **video_id**: ID of the video
     """
     try:
-        video = await video_crud.get_video_with_sections(db, video_id)
+        video = video_crud.get_video_with_sections(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
         
@@ -241,7 +241,7 @@ async def delete_video(
     """
     try:
         # Get video to retrieve file URLs
-        video = await video_crud.get_video(db, video_id)
+        video = video_crud.get_video(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
         
@@ -254,7 +254,7 @@ async def delete_video(
             print(f"Warning: Failed to delete files from storage: {e}")
         
         # Delete video record from database
-        success = await video_crud.delete_video(db, video_id)
+        success = video_crud.delete_video(db, video_id)
         if not success:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
         
@@ -276,9 +276,9 @@ async def clear_all_data(
     """
     try:
         # Delete all database tables and recreate them
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
+        with engine.begin() as conn:
+            conn.run_sync(Base.metadata.drop_all)
+            conn.run_sync(Base.metadata.create_all)
         
         # Clear uploads directory
         uploads_dir = "uploads"
