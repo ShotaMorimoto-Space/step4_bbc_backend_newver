@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import io
+import requests
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 
@@ -171,7 +172,6 @@ def proxy_file(file_path: str):
     try:
         from fastapi.responses import Response
         import urllib.parse
-        import aiohttp
 
         decoded_file_path = urllib.parse.unquote(file_path)
 
@@ -185,15 +185,15 @@ def proxy_file(file_path: str):
             raise HTTPException(status_code=response.status_code, detail="ファイルの取得に失敗しました")
         content = response.content
         content_type = response.headers.get("content-type", "application/octet-stream")
-                return Response(
-                    content=content,
-                    media_type=content_type,
-                    headers={
-                        "Cache-Control": "no-cache, no-store, must-revalidate",
-                        "Pragma": "no-cache",
-                        "Expires": "0",
-                    },
-                )
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
     except HTTPException:
         raise
     except Exception as e:
