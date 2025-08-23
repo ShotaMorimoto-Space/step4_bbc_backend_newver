@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     database_name: str = "test"
     database_username: str = "root"
     database_password: str = ""
+    database_ssl_mode: str = "VERIFY_IDENTITY"  # SSL設定
+    database_ssl_ca: str = "/etc/ssl/certs/ca-certificates.crt"  # SSL証明書パス
 
     # ===== JWT / Auth =====
     secret_key: str = "dev-secret-change-me"
