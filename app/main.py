@@ -50,7 +50,13 @@ app.add_middleware(
 )
 
 # ---- Static ----
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# uploadsディレクトリが存在しない場合は作成
+import os
+uploads_dir = "uploads"
+if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # ---- Routers ----
 app.include_router(auth.router,           prefix="/api/v1/auth",  tags=["auth"])
