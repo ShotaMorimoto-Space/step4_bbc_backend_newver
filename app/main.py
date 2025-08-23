@@ -87,7 +87,8 @@ async def health_check():
         db = next(get_db())
         try:
             # 簡単なクエリを実行してデータベース接続を確認
-            result = db.execute("SELECT 1")
+            from sqlalchemy import text
+            result = db.execute(text("SELECT 1"))
             print("データベース接続: 成功")
             
             # Userテーブルの件数を確認
