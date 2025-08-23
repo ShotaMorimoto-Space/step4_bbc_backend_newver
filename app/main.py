@@ -5,7 +5,7 @@ import os
 import io
 import requests
 from datetime import datetime, timedelta
-from contextlib import asynccontextmanager
+from contextlib import contextmanager
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,7 +25,7 @@ from app.routers import auth, user, video, coach, upload, transcription, line, l
 load_dotenv()
 
 
-@asynccontextmanager
+@contextmanager
 def lifespan(app: FastAPI):
     # Startup
     create_tables()

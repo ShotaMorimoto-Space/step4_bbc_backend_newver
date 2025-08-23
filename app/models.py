@@ -22,10 +22,10 @@ from sqlalchemy import (
     TypeDecorator,
     CHAR,
     Boolean,
+    create_engine,
 )
 from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import relationship, sessionmaker, declarative_base
+from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from sqlalchemy.sql import func
 
 from app.core.config import settings
@@ -253,7 +253,7 @@ class SwingSection(Base):
 
     section_group = relationship("SectionGroup", back_populates="sections")
 
-# ---------- Async Engine / Session ----------
+# ---------- Sync Engine / Session ----------
 DATABASE_URL = settings.assemble_db_url()
 
 pem = os.path.join(os.path.dirname(__file__), "DigiCertGlobalRootCA.crt.pem")
@@ -264,7 +264,7 @@ else:
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = ssl.CERT_NONE  # 証明書なしでTLS必須環境を満たす
 
-engine = create_async_engine(
+engine = create_engine(
     DATABASE_URL,
     echo=(settings.env.lower() == "development"),
     pool_size=5,
@@ -274,17 +274,17 @@ engine = create_async_engine(
     connect_args={"ssl": ssl_ctx},
 )
 
-async_session = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+SessionLocal = sessionmaker(
+    engine, class_=Session, expire_on_commit=False
 )
 
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+def create_tables():
+    with engine.begin() as conn:
+        conn.execute(Base.metadata.create_all)
 
-async def get_db():
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
