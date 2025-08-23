@@ -15,7 +15,7 @@ class ThumbnailService:
     def __init__(self):
         self.temp_dir = Path(tempfile.gettempdir())
     
-    async def generate_thumbnail(self, video_file: BinaryIO, video_filename: str) -> BytesIO:
+    def generate_thumbnail(self, video_file: BinaryIO, video_filename: str) -> BytesIO:
         """
         Generate thumbnail from video file
         
@@ -48,7 +48,7 @@ class ThumbnailService:
                 logger.info(f"Attempting to generate thumbnail at: {temp_thumbnail_path}")
                 
                 # Use ffmpeg to generate thumbnail at 2 seconds
-                success = await self._extract_thumbnail_with_ffmpeg(
+                success = self._extract_thumbnail_with_ffmpeg(
                     str(temp_video_path),
                     str(temp_thumbnail_path),
                     timestamp="00:00:02"
@@ -57,7 +57,7 @@ class ThumbnailService:
                 # If thumbnail generation failed, try at 0 seconds
                 if not success or not temp_thumbnail_path.exists():
                     logger.info("Retrying thumbnail generation at 0 seconds")
-                    success = await self._extract_thumbnail_with_ffmpeg(
+                    success = self._extract_thumbnail_with_ffmpeg(
                         str(temp_video_path),
                         str(temp_thumbnail_path),
                         timestamp="00:00:00"
@@ -66,7 +66,7 @@ class ThumbnailService:
                 # If still failed, try without seeking
                 if not success or not temp_thumbnail_path.exists():
                     logger.info("Retrying thumbnail generation without seeking")
-                    success = await self._extract_thumbnail_with_ffmpeg(
+                    success = self._extract_thumbnail_with_ffmpeg(
                         str(temp_video_path),
                         str(temp_thumbnail_path),
                         timestamp=None
@@ -98,52 +98,36 @@ class ThumbnailService:
                         logger.warning(f"Failed to delete temp thumbnail file: {e}")
                         
         except Exception as e:
-            logger.error(f"Failed to generate thumbnail for {video_filename}: {e}")
+            logger.error(f"Error generating thumbnail: {e}")
             return self._create_default_thumbnail()
     
-    async def _extract_thumbnail_with_ffmpeg(self, video_path: str, thumbnail_path: str, timestamp: str = None) -> bool:
+    def _extract_thumbnail_with_ffmpeg(self, video_path: str, output_path: str, timestamp: str = None) -> bool:
         """
         Extract thumbnail using ffmpeg
         
         Args:
-            video_path: Path to video file
-            thumbnail_path: Path where thumbnail will be saved
-            timestamp: Timestamp to extract frame from (format: HH:MM:SS)
+            video_path: Path to input video file
+            output_path: Path for output thumbnail
+            timestamp: Timestamp to extract (e.g., "00:00:02")
             
         Returns:
             bool: True if successful, False otherwise
         """
         try:
-            # Check if ffmpeg is available
-            result = subprocess.run(
-                ["ffmpeg", "-version"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            
-            if result.returncode != 0:
-                logger.error("ffmpeg is not available")
-                return False
-            
-            # More robust ffmpeg command for various video formats
             cmd = [
                 "ffmpeg",
                 "-i", video_path,
-                "-an",  # Disable audio
-                "-vcodec", "mjpeg",  # Use MJPEG codec
                 "-vframes", "1",
-                "-q:v", "2",  # High quality
-                "-vf", "scale='min(480,iw)':'min(270,ih)':force_original_aspect_ratio=decrease,pad=480:270:(ow-iw)/2:(oh-ih)/2:color=black",  # Maintain aspect ratio with black padding
-                "-y",  # Overwrite output file
+                "-q:v", "2",
+                "-y"  # Overwrite output file
             ]
             
-            # Add timestamp if specified (after input, before output)
             if timestamp:
-                cmd.insert(-1, "-ss")
-                cmd.insert(-1, timestamp)
-                
-            cmd.append(thumbnail_path)
+                cmd.extend(["-ss", timestamp])
+            
+            cmd.append(output_path)
+            
+            logger.info(f"Running ffmpeg command: {' '.join(cmd)}")
             
             result = subprocess.run(
                 cmd,
@@ -152,87 +136,39 @@ class ThumbnailService:
                 timeout=30  # 30 second timeout
             )
             
-            if result.returncode == 0 and Path(thumbnail_path).exists():
-                file_size = Path(thumbnail_path).stat().st_size
-                logger.info(f"Successfully extracted thumbnail at {timestamp}, file size: {file_size} bytes")
+            if result.returncode == 0:
+                logger.info(f"Thumbnail generated successfully: {output_path}")
                 return True
             else:
-                logger.error(f"ffmpeg failed with return code {result.returncode}")
-                logger.error(f"ffmpeg stderr: {result.stderr}")
-                logger.error(f"ffmpeg stdout: {result.stdout}")
-                logger.error(f"ffmpeg command: {' '.join(cmd)}")
+                logger.warning(f"ffmpeg failed with return code {result.returncode}")
+                logger.warning(f"ffmpeg stderr: {result.stderr}")
                 return False
                 
         except subprocess.TimeoutExpired:
-            logger.error("ffmpeg timeout while extracting thumbnail")
-            return False
-        except FileNotFoundError:
-            logger.error("ffmpeg not found. Please install ffmpeg.")
+            logger.error("ffmpeg command timed out")
             return False
         except Exception as e:
             logger.error(f"Error running ffmpeg: {e}")
             return False
     
     def _create_default_thumbnail(self) -> BytesIO:
-        """
-        Create a default thumbnail image when video thumbnail extraction fails
-        
-        Returns:
-            BytesIO: Default thumbnail image as JPEG
-        """
+        """Create a default thumbnail image"""
         try:
-            from PIL import Image, ImageDraw, ImageFont
+            # Create a simple 320x240 black image with white text
+            img = Image.new('RGB', (320, 240), color='black')
             
-            # Create a default thumbnail with video icon
-            img = Image.new('RGB', (480, 270), color='#2d3748')  # Dark gray background
-            draw = ImageDraw.Draw(img)
+            # Convert to JPEG and return as BytesIO
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=85)
+            output.seek(0)
             
-            # Draw a simple video icon
-            # Draw play button triangle in center
-            center_x, center_y = 240, 135
-            triangle_size = 40
-            
-            # Triangle points (play button)
-            triangle = [
-                (center_x - triangle_size//2, center_y - triangle_size//2),
-                (center_x - triangle_size//2, center_y + triangle_size//2),
-                (center_x + triangle_size//2, center_y)
-            ]
-            
-            # Draw white play button
-            draw.polygon(triangle, fill='white')
-            
-            # Draw rectangle around (video frame)
-            frame_margin = 60
-            draw.rectangle([
-                frame_margin, 
-                frame_margin, 
-                480 - frame_margin, 
-                270 - frame_margin
-            ], outline='white', width=3)
-            
-            thumbnail_buffer = BytesIO()
-            img.save(thumbnail_buffer, format='JPEG', quality=85)
-            thumbnail_buffer.seek(0)
-            
-            return thumbnail_buffer
+            logger.info("Default thumbnail created")
+            return output
             
         except Exception as e:
-            logger.error(f"Failed to create default thumbnail: {e}")
-            # Return minimal valid JPEG if even default creation fails
-            # This is a 1x1 gray pixel JPEG
-            minimal_jpeg = BytesIO(
-                b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00'
-                b'\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t'
-                b'\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a'
-                b'\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342'
-                b'\xff\xc0\x00\x11\x08\x00\x01\x00\x01\x01\x01\x11\x00\x02\x11\x01'
-                b'\x03\x11\x01\xff\xc4\x00\x14\x00\x01\x00\x00\x00\x00\x00\x00\x00'
-                b'\x00\x00\x00\x00\x00\x00\x00\x00\x08\xff\xda\x00\x08\x01\x01\x00'
-                b'\x00?\x00\xaa\xff\xd9'
-            )
-            minimal_jpeg.seek(0)
-            return minimal_jpeg
+            logger.error(f"Error creating default thumbnail: {e}")
+            # Return empty BytesIO as fallback
+            return BytesIO()
 
 # Global thumbnail service instance
 thumbnail_service = ThumbnailService()

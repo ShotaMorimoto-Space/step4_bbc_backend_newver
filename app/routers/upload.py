@@ -7,8 +7,7 @@ import uuid
 import os
 import shutil
 import traceback
-import aiohttp
-import asyncio
+import requests
 import io
 import subprocess
 import tempfile
@@ -27,7 +26,7 @@ from app.utils.logger import logger
 router = APIRouter()
 
 @router.post("/upload-video", response_model=VideoResponse)
-async def upload_video(
+def upload_video(
     video_file: UploadFile = File(...),
     club_type: Optional[str] = Form(None),
     swing_form: Optional[str] = Form(None),
@@ -154,7 +153,7 @@ async def upload_video(
         raise HTTPException(status_code=500, detail=f"動画のアップロードに失敗しました: {str(e)}")
 
 @router.post("/upload-thumbnail/{video_id}")
-async def upload_thumbnail(
+def upload_thumbnail(
     video_id: UUID,
     thumbnail_file: UploadFile = File(...),
     db: Session = Depends(get_database)
@@ -198,7 +197,7 @@ async def upload_thumbnail(
         raise HTTPException(status_code=500, detail=f"サムネイルのアップロードに失敗しました: {str(e)}")
 
 @router.get("/upload-status/{video_id}")
-async def get_upload_status(
+def get_upload_status(
     video_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -230,7 +229,7 @@ async def get_upload_status(
         raise HTTPException(status_code=500, detail=f"アップロード状況の取得に失敗しました: {str(e)}")
 
 @router.delete("/video/{video_id}")
-async def delete_video(
+def delete_video(
     video_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -267,7 +266,7 @@ async def delete_video(
 
 
 @router.post("/clear-all-data")
-async def clear_all_data(
+def clear_all_data(
     db: Session = Depends(get_database)
 ):
     """
@@ -293,7 +292,7 @@ async def clear_all_data(
 
 
 @router.get("/proxy-file/{file_url:path}")
-async def proxy_file(file_url: str):
+def proxy_file(file_url: str):
     """
     Azure Blob Storage ファイルをプロキシ経由で配信
     CORS問題を回避するためのエンドポイント
@@ -329,28 +328,28 @@ async def proxy_file(file_url: str):
         # Create SAS URL
         sas_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{container_name}/{filename}?{sas_token}"
         
-        async with aiohttp.ClientSession() as session:
-            async with session.get(sas_url) as response:
-                if response.status != 200:
-                    raise HTTPException(status_code=404, detail="File not found")
-                
-                # Content-Typeを取得
-                content_type = response.headers.get('content-type', 'application/octet-stream')
-                
-                # ファイルコンテンツを読み取り
-                content = await response.read()
-                
-                return StreamingResponse(
-                    io.BytesIO(content),
-                    media_type=content_type,
-                    headers={
-                        "Cache-Control": "public, max-age=3600",  # 1時間キャッシュ
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "GET",
-                        "Access-Control-Allow-Headers": "*"
-                    }
-                )
-                
+        # 同期でファイルを取得
+        response = requests.get(sas_url)
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Content-Typeを取得
+        content_type = response.headers.get('content-type', 'application/octet-stream')
+        
+        # ファイルコンテンツを読み取り
+        content = response.content
+        
+        return StreamingResponse(
+            io.BytesIO(content),
+            media_type=content_type,
+            headers={
+                "Cache-Control": "public, max-age=3600",  # 1時間キャッシュ
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "*"
+            }
+        )
+        
     except HTTPException:
         raise
     except Exception as e:
@@ -359,7 +358,7 @@ async def proxy_file(file_url: str):
 
 
 @router.get("/media-url")
-async def get_media_url(blob_url: str):
+def get_media_url(blob_url: str):
     """
     Azure Blob URLからSAS付きURLを生成
     """
@@ -407,7 +406,7 @@ async def get_media_url(blob_url: str):
 
 
 @router.get("/media-url-simple")
-async def get_media_url_simple(filename: str):
+def get_media_url_simple(filename: str):
     """
     ファイル名からSAS付きURLを生成（シンプル版）
     """
@@ -443,7 +442,7 @@ async def get_media_url_simple(filename: str):
         raise HTTPException(status_code=500, detail=f"URL生成に失敗しました: {str(e)}")
 
 @router.post("/capture-video-frame")
-async def capture_video_frame(
+def capture_video_frame(
     video_url: str = Form(...),
     time_seconds: float = Form(...),
     filename: Optional[str] = Form(None)
@@ -473,14 +472,13 @@ async def capture_video_frame(
         try:
             # 動画をダウンロード
             logger.info("動画をダウンロード中...")
-            async with aiohttp.ClientSession() as session:
-                async with session.get(video_url) as response:
-                    if response.status != 200:
-                        raise HTTPException(status_code=400, detail="動画のダウンロードに失敗しました")
-                    
-                    video_content = await response.read()
-                    with open(video_temp_path, 'wb') as f:
-                        f.write(video_content)
+            response = requests.get(video_url)
+            if response.status_code != 200:
+                raise HTTPException(status_code=400, detail="動画のダウンロードに失敗しました")
+            
+            video_content = response.content
+            with open(video_temp_path, 'wb') as f:
+                f.write(video_content)
             
             logger.info(f"動画ダウンロード完了: {len(video_content)} bytes")
             # ファイルサイズチェック（1MB未満は失敗とみなす）
@@ -560,7 +558,7 @@ async def capture_video_frame(
 
 
 @router.post("/upload-markup-image")
-async def upload_markup_image(
+def upload_markup_image(
     image_data: str = Form(...),  # Base64 encoded image data
     filename: str = Form(...),    # Filename with _Mark suffix
     original_url: str = Form(...) # Original image URL for reference

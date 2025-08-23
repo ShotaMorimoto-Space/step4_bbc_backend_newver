@@ -7,7 +7,6 @@ import os
 import shutil
 from pathlib import Path
 import uuid
-import asyncio
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, unquote
 import json
@@ -32,35 +31,35 @@ class StorageInterface(ABC):
     """Abstract interface for storage operations"""
 
     @abstractmethod
-    async def upload_file(self, file: BinaryIO, filename: str, content_type: Optional[str] = None) -> str:
+    def upload_file(self, file: BinaryIO, filename: str, content_type: Optional[str] = None) -> str:
         """Upload a file and return the URL"""
         raise NotImplementedError
 
     @abstractmethod
-    async def upload_file_with_exact_name(self, file: BinaryIO, exact_filename: str, content_type: Optional[str] = None) -> str:
+    def upload_file_with_exact_name(self, file: BinaryIO, exact_filename: str, content_type: Optional[str] = None) -> str:
         """Upload a file with exact filename (no modifications) and return the URL"""
         raise NotImplementedError
 
     @abstractmethod
-    async def delete_file(self, file_url_or_path: str) -> bool:
+    def delete_file(self, file_url_or_path: str) -> bool:
         """Delete a file by URL (or blob path)"""
         raise NotImplementedError
 
     @abstractmethod
-    async def get_file_url(self, filename_or_path: str) -> str:
+    def get_file_url(self, filename_or_path: str) -> str:
         """Get the URL for a file"""
         raise NotImplementedError
 
     # 追加：マークアップ等のJSON保存/取得
-    async def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
+    def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
         """Save dict as JSON and return its URL"""
         raise NotImplementedError
 
-    async def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
+    def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
         """Get JSON (dict) from storage"""
         raise NotImplementedError
 
-    async def list_files(self, prefix: str = "") -> List[str]:
+    def list_files(self, prefix: str = "") -> List[str]:
         """List file paths under prefix"""
         raise NotImplementedError
 
@@ -76,7 +75,7 @@ class LocalStorage(StorageInterface):
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.base_url = "/uploads"  # Next.js のリバースプロキシ想定
 
-    async def upload_file(self, file: BinaryIO, filename: str, content_type: Optional[str] = None) -> str:
+    def upload_file(self, file: BinaryIO, filename: str, content_type: Optional[str] = None) -> str:
         """Upload file to local storage"""
         file_extension = Path(filename).suffix
         jst = timezone(timedelta(hours=9))
@@ -85,20 +84,19 @@ class LocalStorage(StorageInterface):
         unique_filename = f"{timestamp}_U99999{file_extension}"
 
         file_path = self.storage_path / unique_filename
-        # file は同期IOなので to_thread は不要
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file, buffer)
 
         return f"{self.base_url}/{unique_filename}"
 
-    async def upload_file_with_exact_name(self, file: BinaryIO, exact_filename: str, content_type: Optional[str] = None) -> str:
+    def upload_file_with_exact_name(self, file: BinaryIO, exact_filename: str, content_type: Optional[str] = None) -> str:
         """Upload file to local storage with exact filename"""
         file_path = self.storage_path / exact_filename
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file, buffer)
         return f"{self.base_url}/{exact_filename}"
 
-    async def delete_file(self, file_url_or_path: str) -> bool:
+    def delete_file(self, file_url_or_path: str) -> bool:
         """Delete file from local storage"""
         try:
             # URL or path のどちらでもOKにする
@@ -111,22 +109,22 @@ class LocalStorage(StorageInterface):
         except Exception:
             return False
 
-    async def get_file_url(self, filename_or_path: str) -> str:
+    def get_file_url(self, filename_or_path: str) -> str:
         """Get URL for local file"""
         # 先頭に '/' があればそのまま返す
         if filename_or_path.startswith("/"):
             return filename_or_path
         return f"{self.base_url}/{filename_or_path}"
 
-    async def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
+    def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
         """Save dict as JSON file locally"""
         target = self.storage_path / blob_path
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
-        return await self.get_file_url(blob_path)
+        return self.get_file_url(blob_path)
 
-    async def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
+    def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
         target = self.storage_path / blob_path
         if not target.exists():
             return None
@@ -136,7 +134,7 @@ class LocalStorage(StorageInterface):
         except Exception:
             return None
 
-    async def list_files(self, prefix: str = "") -> List[str]:
+    def list_files(self, prefix: str = "") -> List[str]:
         base = self.storage_path / prefix if prefix else self.storage_path
         if not base.exists():
             return []
@@ -199,7 +197,7 @@ class AzureBlobStorage(StorageInterface):
         return path.split("/", 1)[-1]
 
     # ---------- core ops ----------
-    async def upload_file(self, file: BinaryIO, filename: str, content_type: Optional[str] = None) -> str:
+    def upload_file(self, file: BinaryIO, filename: str, content_type: Optional[str] = None) -> str:
         """Upload file to Azure Blob Storage with unique name"""
         file_extension = Path(filename).suffix
         jst = timezone(timedelta(hours=9))
@@ -209,31 +207,25 @@ class AzureBlobStorage(StorageInterface):
 
         blob_client = self._blob_client(unique_filename)
 
-        def _upload():
-            blob_client.upload_blob(
-                file,
-                content_settings=ContentSettings(content_type=content_type) if content_type else None,
-                overwrite=True,
-            )
-
-        await asyncio.to_thread(_upload)
+        blob_client.upload_blob(
+            file,
+            content_settings=ContentSettings(content_type=content_type) if content_type else None,
+            overwrite=True,
+        )
         return blob_client.url
 
-    async def upload_file_with_exact_name(self, file: BinaryIO, exact_filename: str, content_type: Optional[str] = None) -> str:
+    def upload_file_with_exact_name(self, file: BinaryIO, exact_filename: str, content_type: Optional[str] = None) -> str:
         """Upload file to Azure Blob Storage with exact filename"""
         blob_client = self._blob_client(exact_filename)
 
-        def _upload():
-            blob_client.upload_blob(
-                file,
-                content_settings=ContentSettings(content_type=content_type) if content_type else None,
-                overwrite=True,
-            )
-
-        await asyncio.to_thread(_upload)
+        blob_client.upload_blob(
+            file,
+            content_settings=ContentSettings(content_type=content_type) if content_type else None,
+            overwrite=True,
+        )
         return blob_client.url
 
-    async def delete_file(self, file_url_or_path: str) -> bool:
+    def delete_file(self, file_url_or_path: str) -> bool:
         """Delete blob by URL or blob-path"""
         try:
             blob_path = self._extract_blob_path_from_url(file_url_or_path)
@@ -241,24 +233,21 @@ class AzureBlobStorage(StorageInterface):
                 return False
             blob_client = self._blob_client(blob_path)
 
-            def _delete():
-                try:
-                    blob_client.delete_blob()
-                    return True
-                except Exception:
-                    return False
-
-            return await asyncio.to_thread(_delete)
+            try:
+                blob_client.delete_blob()
+                return True
+            except Exception:
+                return False
         except Exception:
             return False
 
-    async def get_file_url(self, filename_or_path: str) -> str:
+    def get_file_url(self, filename_or_path: str) -> str:
         """Get URL for Azure blob (no SAS)"""
         blob_client = self._blob_client(filename_or_path)
         return blob_client.url
 
     # ---------- JSON helpers ----------
-    async def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
+    def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
         """
         Save dict as JSON blob (UTF-8).
         Returns public (non-SAS) blob URL.
@@ -266,40 +255,31 @@ class AzureBlobStorage(StorageInterface):
         payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
         blob_client = self._blob_client(blob_path)
 
-        def _upload():
-            blob_client.upload_blob(
-                payload,
-                overwrite=True,
-                content_settings=ContentSettings(content_type="application/json"),
-            )
-
-        await asyncio.to_thread(_upload)
+        blob_client.upload_blob(
+            payload,
+            overwrite=True,
+            content_settings=ContentSettings(content_type="application/json"),
+        )
         return blob_client.url
 
-    async def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
+    def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
         blob_client = self._blob_client(blob_path)
 
-        def _download() -> Optional[Dict[str, Any]]:
-            try:
-                stream = blob_client.download_blob()
-                raw = stream.readall()
-                return json.loads(raw.decode("utf-8"))
-            except Exception:
-                return None
+        try:
+            stream = blob_client.download_blob()
+            raw = stream.readall()
+            return json.loads(raw.decode("utf-8"))
+        except Exception:
+            return None
 
-        return await asyncio.to_thread(_download)
-
-    async def list_files(self, prefix: str = "") -> List[str]:
-        def _list() -> List[str]:
-            try:
-                res = []
-                for blob in self.container_client.list_blobs(name_starts_with=prefix):
-                    res.append(blob.name)
-                return res
-            except Exception:
-                return []
-
-        return await asyncio.to_thread(_list)
+    def list_files(self, prefix: str = "") -> List[str]:
+        try:
+            res = []
+            for blob in self.container_client.list_blobs(name_starts_with=prefix):
+                res.append(blob.name)
+            return res
+        except Exception:
+            return []
 
     def __del__(self):
         """Cleanup executor on deletion"""
@@ -324,34 +304,34 @@ class StorageService:
             self.storage = LocalStorage(storage_path)
 
     # ---- Common wrappers (existing API) ----
-    async def upload_video(self, file: BinaryIO, filename: str) -> str:
-        return await self.storage.upload_file(file, filename, "video/mp4")
+    def upload_video(self, file: BinaryIO, filename: str) -> str:
+        return self.storage.upload_file(file, filename, "video/mp4")
 
-    async def upload_image(self, file: BinaryIO, filename: str) -> str:
-        return await self.storage.upload_file(file, filename, "image/jpeg")
+    def upload_image(self, file: BinaryIO, filename: str) -> str:
+        return self.storage.upload_file(file, filename, "image/jpeg")
 
-    async def upload_image_with_exact_name(self, file: BinaryIO, exact_filename: str) -> str:
-        return await self.storage.upload_file_with_exact_name(file, exact_filename, "image/jpeg")
+    def upload_image_with_exact_name(self, file: BinaryIO, exact_filename: str) -> str:
+        return self.storage.upload_file_with_exact_name(file, exact_filename, "image/jpeg")
 
-    async def delete_file(self, file_url_or_path: str) -> bool:
-        return await self.storage.delete_file(file_url_or_path)
+    def delete_file(self, file_url_or_path: str) -> bool:
+        return self.storage.delete_file(file_url_or_path)
 
-    async def get_file_url(self, filename_or_path: str) -> str:
-        return await self.storage.get_file_url(filename_or_path)
+    def get_file_url(self, filename_or_path: str) -> str:
+        return self.storage.get_file_url(filename_or_path)
 
     # ---- New: JSON helpers for markups/metadata ----
-    async def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
+    def save_json(self, blob_path: str, data: Dict[str, Any]) -> str:
         """
         Save dict as JSON (Azure or Local). Return URL/path.
         ex) blob_path = "markups/{video_id}.json"
         """
-        return await self.storage.save_json(blob_path, data)
+        return self.storage.save_json(blob_path, data)
 
-    async def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
-        return await self.storage.get_json(blob_path)
+    def get_json(self, blob_path: str) -> Optional[Dict[str, Any]]:
+        return self.storage.get_json(blob_path)
 
-    async def list_files(self, prefix: str = "") -> List[str]:
-        return await self.storage.list_files(prefix)
+    def list_files(self, prefix: str = "") -> List[str]:
+        return self.storage.list_files(prefix)
 
 
 # Global storage service instance
