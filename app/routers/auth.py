@@ -52,15 +52,15 @@ async def register_user(payload: UserRegister, db: Session = Depends(get_databas
 
 @router.patch("/user/{user_id}/profile", response_model=UserResponse)
 async def update_user_profile(user_id: UUID, payload: UserProfileUpdate, db: Session = Depends(get_database)):
-    user = (await db.execute(select(User).where(User.user_id == user_id))).scalar_one_or_none()
+    user = db.execute(select(User).where(User.user_id == user_id)).scalar_one_or_none()
     if not user:
         raise HTTPException(404, "ユーザーが見つかりません")
 
     for key, value in payload.dict(exclude_unset=True).items():
         setattr(user, key, value)
 
-    await db.commit()
-    await db.refresh(user)
+    db.commit()
+    db.refresh(user)
 
     return UserResponse.model_validate(user, from_attributes=True)
 
@@ -69,8 +69,8 @@ async def update_user_profile(user_id: UUID, payload: UserProfileUpdate, db: Ses
 # ---------------------------
 @router.post("/register/coach", response_model=CoachResponse, status_code=status.HTTP_201_CREATED)
 async def register_coach(payload: CoachCreate, db: Session = Depends(get_database)):
-    u = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
-    c = (await db.execute(select(Coach).where(Coach.email == payload.email))).scalar_one_or_none()
+    u = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    c = db.execute(select(Coach).where(Coach.email == payload.email)).scalar_one_or_none()
     if u or c:
         raise HTTPException(status_code=400, detail="すでに登録済みのメールアドレスです")
 
@@ -99,21 +99,21 @@ async def register_coach(payload: CoachCreate, db: Session = Depends(get_databas
         lesson_rank=payload.lesson_rank,
     )
     db.add(db_coach)
-    await db.commit()
-    await db.refresh(db_coach)
+    db.commit()
+    db.refresh(db_coach)
     return db_coach
 
 @router.patch("/coach/{coach_id}/profile", response_model=CoachResponse)
 async def update_coach_profile(coach_id: UUID, payload: CoachUpdate, db: Session = Depends(get_database)):
-    coach = (await db.execute(select(Coach).where(Coach.coach_id == coach_id))).scalar_one_or_none()
+    coach = db.execute(select(Coach).where(Coach.coach_id == coach_id)).scalar_one_or_none()
     if not coach:
         raise HTTPException(404, "コーチが見つかりません")
 
     for key, value in payload.dict(exclude_unset=True).items():
         setattr(coach, key, value)
 
-    await db.commit()
-    await db.refresh(coach)
+    db.commit()
+    db.refresh(coach)
 
     return CoachResponse.model_validate(coach, from_attributes=True)
 
@@ -143,7 +143,7 @@ async def login_any(
 
         # Userとして認証
         print(f"Userテーブルで検索中: {email}")
-        u = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+        u = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
         
         if u:
             print(f"Userが見つかりました: {u.user_id}")
@@ -161,7 +161,7 @@ async def login_any(
 
         # Coachとして認証
         print(f"Coachテーブルで検索中: {email}")
-        c = (await db.execute(select(Coach).where(Coach.email == email))).scalar_one_or_none()
+        c = db.execute(select(Coach).where(Coach.email == email)).scalar_one_or_none()
         
         if c:
             print(f"Coachが見つかりました: {c.coach_id}")
@@ -197,10 +197,10 @@ async def login_any(
 @router.get("/me")
 async def me(sub: str = Depends(get_current_user_strict), db: Session = Depends(get_database)):
     # sub は JWT の "sub"（= user_id or coach_id）
-    u = (await db.execute(select(User).where(User.user_id == sub))).scalar_one_or_none()
+    u = db.execute(select(User).where(User.user_id == sub)).scalar_one_or_none()
     if u:
         return {"role": "user", "profile": UserMini.model_validate(u)}
-    c = (await db.execute(select(Coach).where(Coach.coach_id == sub))).scalar_one_or_none()
+    c = db.execute(select(Coach).where(Coach.coach_id == sub)).scalar_one_or_none()
     if c:
         return {"role": "coach", "profile": CoachOut.model_validate(c)}
     raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
