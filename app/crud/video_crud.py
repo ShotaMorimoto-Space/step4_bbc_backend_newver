@@ -34,12 +34,12 @@ class VideoCRUD:
     # ---- 取得 ----
     @staticmethod
     def get_video(db: Session, video_id: UUID) -> Optional[Video]:
-        res = await db.execute(select(Video).where(Video.video_id == video_id))
+        res = db.execute(select(Video).where(Video.video_id == video_id))
         return res.scalar_one_or_none()
 
     @staticmethod
     def get_video_with_sections(db: Session, video_id: UUID) -> Optional[Video]:
-        res = await db.execute(
+        res = db.execute(
             select(Video)
             .options(selectinload(Video.section_groups).selectinload(SectionGroup.sections))
             .where(Video.video_id == video_id)
@@ -50,7 +50,7 @@ class VideoCRUD:
     def get_videos_by_user(
         db: Session, user_id: UUID, skip: int = 0, limit: int = 100
     ) -> List[Video]:
-        res = await db.execute(
+        res = db.execute(
             select(Video)
             .where(Video.user_id == user_id)
             .order_by(Video.upload_date.desc())
@@ -63,7 +63,7 @@ class VideoCRUD:
     def get_all_videos_with_sections(
         db: Session, skip: int = 0, limit: int = 100
     ) -> List[Video]:
-        res = await db.execute(
+        res = db.execute(
             select(Video)
             .options(selectinload(Video.section_groups).selectinload(SectionGroup.sections))
             .order_by(Video.upload_date.desc())
@@ -81,36 +81,36 @@ class VideoCRUD:
         update_data = _normalize_video_update_payload(update_data)
 
         if update_data:
-            await db.execute(
+            db.execute(
                 update(Video).where(Video.video_id == video_id).values(**update_data)
             )
-            await db.commit()
+            db.commit()
 
-        return await VideoCRUD.get_video(db, video_id)
+        return VideoCRUD.get_video(db, video_id)
 
     # ---- 削除 ----
     @staticmethod
     def delete_video(db: Session, video_id: UUID) -> bool:
-        res = await db.execute(delete(Video).where(Video.video_id == video_id))
-        await db.commit()
+        res = db.execute(delete(Video).where(Video.video_id == video_id))
+        db.commit()
         return (res.rowcount or 0) > 0
 
     # ---- ピン留め ----
     @staticmethod
     def set_pinned_video(db: Session, user_id: UUID, video_id: UUID):
         # 既存のピンを外す
-        await db.execute(
+        db.execute(
             update(Video).where(Video.user_id == user_id).values(is_pinned=False)
         )
         # 新しいピンを設定
-        await db.execute(
+        db.execute(
             update(Video).where(Video.video_id == video_id).values(is_pinned=True)
         )
-        await db.commit()
+        db.commit()
 
     @staticmethod
     def get_pinned_video(db: Session, user_id: UUID) -> Optional[Video]:
-        res = await db.execute(
+        res = db.execute(
             select(Video).where(Video.user_id == user_id, Video.is_pinned == True)
         )
         return res.scalars().first()
@@ -118,10 +118,10 @@ class VideoCRUD:
     # ---- 添削済み ----
     @staticmethod
     def mark_video_as_reviewed(db: Session, video_id: UUID):
-        await db.execute(
+        db.execute(
             update(Video).where(Video.video_id == video_id).values(is_reviewed=True)
         )
-        await db.commit()
+        db.commit()
 
 
 # インスタンス（既存の import スタイル互換）

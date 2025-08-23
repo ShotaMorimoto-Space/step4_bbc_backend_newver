@@ -34,30 +34,30 @@ class UserCRUD:
             position=payload.position,
         )
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        db.commit()
+        db.refresh(user)
         return user
 
     @staticmethod
     def get(db: Session, user_id: UUID) -> Optional[User]:
-        res = await db.execute(select(User).where(User.user_id == user_id))
+        res = db.execute(select(User).where(User.user_id == user_id))
         return res.scalar_one_or_none()
 
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[User]:
-        res = await db.execute(select(User).where(User.email == email))
+        res = db.execute(select(User).where(User.email == email))
         return res.scalar_one_or_none()
 
     @staticmethod
     def get_by_line_user_id(db: Session, line_user_id: str) -> Optional[User]:
         if not line_user_id:
             return None
-        res = await db.execute(select(User).where(User.line_user_id == line_user_id))
+        res = db.execute(select(User).where(User.line_user_id == line_user_id))
         return res.scalar_one_or_none()
 
     @staticmethod
     def list(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
-        res = await db.execute(
+        res = db.execute(
             select(User).order_by(User.created_at.desc()).offset(skip).limit(limit)
         )
         return res.scalars().all()
@@ -65,10 +65,10 @@ class UserCRUD:
     @staticmethod
     def update_partial(db: Session, user_id: UUID, data: dict) -> Optional[User]:
         if not data:
-            return await UserCRUD.get(db, user_id)
-        await db.execute(update(User).where(User.user_id == user_id).values(**data))
-        await db.commit()
-        return await UserCRUD.get(db, user_id)
+            return UserCRUD.get(db, user_id)
+        db.execute(update(User).where(User.user_id == user_id).values(**data))
+        db.commit()
+        return UserCRUD.get(db, user_id)
 
 
 user_crud = UserCRUD()

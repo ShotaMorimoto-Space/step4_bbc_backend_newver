@@ -36,7 +36,7 @@ USE_DUMMY = not (LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN)
 # ---------------------------
 def ensure_guest_user(db: Session, line_user_id: str) -> User:
     """line_user_id で users を検索。なければ guest を自動作成して返す。"""
-    existing = (await db.execute(
+    existing = (db.execute(
         select(User).where(User.line_user_id == line_user_id)
     )).scalar_one_or_none()
 
@@ -54,8 +54,8 @@ def ensure_guest_user(db: Session, line_user_id: str) -> User:
         bio="Created via LINE webhook",
     )
     db.add(guest)
-    await db.commit()
-    await db.refresh(guest)
+    db.commit()
+    db.refresh(guest)
     return guest
 
 
@@ -75,12 +75,10 @@ def line_get_message_content(message_id: str) -> bytes:
         return b"dummy"
     url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
     headers = {"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"}
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as resp:
-            if resp.status != 200:
-                text = await resp.text()
-                raise HTTPException(500, f"LINE content fetch failed: {resp.status} {text}")
-            return await resp.read()
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise HTTPException(500, f"LINE content fetch failed: {response.status_code} {response.text}")
+    return response.content
 
 
 def line_reply(reply_token: str, texts: list[str]) -> None:
@@ -97,11 +95,9 @@ def line_reply(reply_token: str, texts: list[str]) -> None:
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": t[:1000]} for t in texts],
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, json=payload) as resp:
-            if resp.status != 200:
-                text = await resp.text()
-                logger.warning(f"LINE reply error: {resp.status} {text}")
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code != 200:
+        logger.warning(f"LINE reply error: {response.status_code} {response.text}")
 
 
 # ---------------------------
@@ -113,13 +109,13 @@ def webhook(
     x_line_signature: Optional[str] = Header(None, alias="X-Line-Signature"),
     db: Session = Depends(get_database),
 ):
-    body_bytes = await request.body()
+    body_bytes = request.body()
 
     # 署名検証
-    if not await verify_line_signature(body_bytes, x_line_signature or ""):
+    if not verify_line_signature(body_bytes, x_line_signature or ""):
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    payload: Dict[str, Any] = await request.json()
+    payload: Dict[str, Any] = request.json()
     events = payload.get("events", [])
     logger.info(f"LINE events: {events}")
 
@@ -131,7 +127,7 @@ def webhook(
 
         # ゲスト自動作成（なければ）
         if line_user_id:
-            user = await ensure_guest_user(db, line_user_id)
+            user = ensure_guest_user(db, line_user_id)
             logger.info(f"guest ensured: user_id={user.user_id}")
 
         if etype == "message":
@@ -142,57 +138,57 @@ def webhook(
             # 画像
             if mtype == "image":
                 try:
-                    blob = await line_get_message_content(message_id)
+                    blob = line_get_message_content(message_id)
                     # 画像保存（Azure Blob）
                     # ファイル名は一意っぽく
                     filename = f"line_img_{message_id}.jpg"
                     # storage_service は画像アップロードAPIがある想定
-                    url = await storage_service.upload_image(io_bytes=blob, filename=filename)  # upload_imageがBytes/IO両対応ならOK
-                    await line_reply(reply_token, ["画像を受け取りました。保存しました。", url if url else ""])
+                    url = storage_service.upload_image(io_bytes=blob, filename=filename)  # upload_imageがBytes/IO両対応ならOK
+                    line_reply(reply_token, ["画像を受け取りました。保存しました。", url if url else ""])
                 except Exception as e:
                     logger.exception(e)
-                    await line_reply(reply_token, ["画像の保存に失敗しました。"])
+                    line_reply(reply_token, ["画像の保存に失敗しました。"])
 
             # 動画
             elif mtype == "video":
                 try:
-                    blob = await line_get_message_content(message_id)
+                    blob = line_get_message_content(message_id)
                     # TODO: 動画の保存。storage_service に汎用アップロードが無ければ実装が必要。
                     # いったん保存スキップして受領だけ返信。
-                    await line_reply(reply_token, ["動画を受け取りました。（保存は今はスキップ）"])
+                    line_reply(reply_token, ["動画を受け取りました。（保存は今はスキップ）"])
                 except Exception as e:
                     logger.exception(e)
-                    await line_reply(reply_token, ["動画の取得に失敗しました。"])
+                    line_reply(reply_token, ["動画の取得に失敗しました。"])
 
             # 音声
             elif mtype == "audio":
                 try:
-                    blob = await line_get_message_content(message_id)
+                    blob = line_get_message_content(message_id)
                     # TODO: audio 保存APIがあれば使う。なければスキップ。
-                    await line_reply(reply_token, ["音声を受け取りました。（保存は今はスキップ）"])
+                    line_reply(reply_token, ["音声を受け取りました。（保存は今はスキップ）"])
                 except Exception as e:
                     logger.exception(e)
-                    await line_reply(reply_token, ["音声の取得に失敗しました。"])
+                    line_reply(reply_token, ["音声の取得に失敗しました。"])
 
             # テキスト
             elif mtype == "text":
                 text = msg.get("text", "")
                 # 簡単なハンドリング例
                 if text.strip().lower() == "help":
-                    await line_reply(reply_token, [
+                    line_reply(reply_token, [
                         "画像・動画・音声を送ると受け取ります。",
                         "アプリ連携は /api/v1/line/login で行えます。",
                     ])
                 else:
-                    await line_reply(reply_token, [f"受け取りました: {text}"])
+                    line_reply(reply_token, [f"受け取りました: {text}"])
 
             else:
-                await line_reply(reply_token, ["未対応のメッセージタイプです。"])
+                line_reply(reply_token, ["未対応のメッセージタイプです。"])
 
         else:
             # follow / unfollow / postback などはここで個別対応可能
             if reply_token:
-                await line_reply(reply_token, ["イベントを受け取りました。"])
+                line_reply(reply_token, ["イベントを受け取りました。"])
 
     return {"success": True}
 
@@ -213,7 +209,7 @@ def line_login(payload: LineLoginRequest, db: Session = Depends(get_database)):
     """
     # 開発ショートカット
     if payload.line_user_id:
-        user = await ensure_guest_user(db, payload.line_user_id)
+        user = ensure_guest_user(db, payload.line_user_id)
     else:
         # 本番は id_token 検証が必要（ここではダミー対応）
         if USE_DUMMY or not payload.id_token:

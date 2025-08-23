@@ -70,7 +70,7 @@ def transcribe_audio(
         # 一時ファイルへ保存
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
             temp_file_path = temp_file.name
-            audio_content = await audio.read()
+            audio_content = audio.read()
             temp_file.write(audio_content)
             temp_file.flush()
 
@@ -128,13 +128,13 @@ def transcribe_audio(
             try:
                 audio_stream = io.BytesIO(audio_content)
                 if hasattr(storage_service, "upload_audio_with_exact_name"):
-                    audio_url = await storage_service.upload_audio_with_exact_name(audio_stream, audio_filename)
+                    audio_url = storage_service.upload_audio_with_exact_name(audio_stream, audio_filename)
                 elif hasattr(storage_service, "storage"):
-                    audio_url = await storage_service.storage.upload_file_with_exact_name(
+                    audio_url = storage_service.storage.upload_file_with_exact_name(
                         audio_stream, audio_filename, content_type="audio/wav"
                     )
                 else:
-                    audio_url = await storage_service.storage.upload_file(
+                    audio_url = storage_service.storage.upload_file(
                         audio_stream, audio_filename, content_type="audio/wav"
                     )
                 logger.info(f"音声ファイル保存完了: {audio_url}")

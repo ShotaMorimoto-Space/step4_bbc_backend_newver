@@ -14,20 +14,20 @@ class CoachingReservationCRUD:
     def create_reservation(db: Session, reservation: CoachingReservationCreate) -> CoachingReservation:
         db_reservation = CoachingReservation(**reservation.model_dump(exclude_unset=True))
         db.add(db_reservation)
-        await db.commit()
-        await db.refresh(db_reservation)
+        db.commit()
+        db.refresh(db_reservation)
         return db_reservation
 
     @staticmethod
     def get_reservation(db: Session, session_id: UUID) -> Optional[CoachingReservation]:
-        res = await db.execute(
+        res = db.execute(
             select(CoachingReservation).where(CoachingReservation.session_id == session_id)
         )
         return res.scalar_one_or_none()
 
     @staticmethod
     def get_reservations_by_user(db: Session, user_id: UUID) -> List[CoachingReservation]:
-        res = await db.execute(
+        res = db.execute(
             select(CoachingReservation)
             .where(CoachingReservation.user_id == user_id)
             .order_by(CoachingReservation.session_date.desc())
@@ -36,7 +36,7 @@ class CoachingReservationCRUD:
 
     @staticmethod
     def get_reservations_by_coach(db: Session, coach_id: UUID) -> List[CoachingReservation]:
-        res = await db.execute(
+        res = db.execute(
             select(CoachingReservation)
             .where(CoachingReservation.coach_id == coach_id)
             .order_by(CoachingReservation.session_date.desc())
@@ -50,12 +50,12 @@ class CoachingReservationCRUD:
         update_data = {k: v for k, v in reservation_update.model_dump(exclude_unset=True).items() if v is not None}
 
         if update_data:
-            await db.execute(
+            db.execute(
                 update(CoachingReservation).where(CoachingReservation.session_id == session_id).values(**update_data)
             )
-            await db.commit()
+            db.commit()
 
-        return await CoachingReservationCRUD.get_reservation(db, session_id)
+        return CoachingReservationCRUD.get_reservation(db, session_id)
 
 
 coaching_reservation_crud = CoachingReservationCRUD()

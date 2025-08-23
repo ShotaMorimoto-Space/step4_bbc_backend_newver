@@ -163,7 +163,7 @@ def create_section_group(
     """
     try:
         # Verify video exists and get with sections
-        video = await video_crud.get_video_with_sections(db, video_id)
+        video = video_crud.get_video_with_sections(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
         
@@ -178,7 +178,7 @@ def create_section_group(
         
         # Create new section group
         section_group_data = SectionGroupCreate(video_id=video_id)
-        section_group = await section_group_crud.create_section_group(db, section_group_data)
+        section_group = section_group_crud.create_section_group(db, section_group_data)
         
         return section_group
         
@@ -213,7 +213,7 @@ def add_swing_section(
     """
     try:
         # Verify section group exists
-        section_group = await section_group_crud.get_section_group(db, section_group_id)
+        section_group = section_group_crud.get_section_group(db, section_group_id)
         if not section_group:
             raise HTTPException(status_code=404, detail="セクショングループが見つかりません")
         
@@ -228,7 +228,7 @@ def add_swing_section(
                 raise HTTPException(status_code=400, detail="マークアップファイルは画像ファイルである必要があります")
             
             # Upload markup image
-            final_image_url = await storage_service.upload_image(
+            final_image_url = storage_service.upload_image(
                 markup_image.file,
                 markup_image.filename
             )
@@ -250,20 +250,20 @@ def add_swing_section(
             tags=parsed_tags
         )
         
-        section = await swing_section_crud.create_section(db, section_data)
+        section = swing_section_crud.create_section(db, section_data)
         
         # Add coach comment if provided
         if coach_comment and section:
             # Generate summary using AI
             try:
-                summary = await ai_service.summarize_coach_comment(coach_comment)
+                summary = ai_service.summarize_coach_comment(coach_comment)
             except Exception as e:
                 # Fallback to simple truncation if AI fails
                 print(f"AI summarization failed: {e}")
                 summary = coach_comment[:200] + "..." if len(coach_comment) > 200 else coach_comment
             
             # Update section with comment and summary
-            updated_section = await swing_section_crud.add_coach_comment(
+            updated_section = swing_section_crud.add_coach_comment(
                 db, section.section_id, coach_comment, summary
             )
             if updated_section:
@@ -298,30 +298,30 @@ def add_coach_comment(
     """
     try:
         # Verify section exists
-        section = await swing_section_crud.get_section(db, section_id)
+        section = swing_section_crud.get_section(db, section_id)
         if not section:
             raise HTTPException(status_code=404, detail="セクションが見つかりません")
         
         # Validate audio file format
-        if not await transcription_service.validate_audio_format(audio_file.file):
+        if not transcription_service.validate_audio_format(audio_file.file):
             raise HTTPException(status_code=400, detail="サポートされていない音声ファイル形式です")
         
         # Transcribe audio to text
         try:
-            transcribed_text = await transcription_service.transcribe_audio(audio_file.file)
+            transcribed_text = transcription_service.transcribe_audio(audio_file.file)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"音声の文字起こしに失敗しました: {str(e)}")
         
         # Generate summary using AI
         try:
-            summary = await ai_service.summarize_coach_comment(transcribed_text)
+            summary = ai_service.summarize_coach_comment(transcribed_text)
         except Exception as e:
             # Fallback to simple truncation if AI fails
             print(f"AI summarization failed: {e}")
             summary = transcribed_text[:200] + "..." if len(transcribed_text) > 200 else transcribed_text
         
         # Update section with comment and summary
-        updated_section = await swing_section_crud.add_coach_comment(
+        updated_section = swing_section_crud.add_coach_comment(
             db, section_id, transcribed_text, summary
         )
         
@@ -353,12 +353,12 @@ def update_swing_section(
     """
     try:
         # Verify section exists
-        section = await swing_section_crud.get_section(db, section_id)
+        section = swing_section_crud.get_section(db, section_id)
         if not section:
             raise HTTPException(status_code=404, detail="セクションが見つかりません")
         
         # Update section
-        updated_section = await swing_section_crud.update_section(db, section_id, section_update)
+        updated_section = swing_section_crud.update_section(db, section_id, section_update)
         
         if not updated_section:
             raise HTTPException(status_code=500, detail="セクションの更新に失敗しました")
@@ -381,7 +381,7 @@ def get_swing_section(
     - **section_id**: ID of the section
     """
     try:
-        section = await swing_section_crud.get_section(db, section_id)
+        section = swing_section_crud.get_section(db, section_id)
         if not section:
             raise HTTPException(status_code=404, detail="セクションが見つかりません")
         
@@ -403,7 +403,7 @@ def get_sections_by_group(
     - **section_group_id**: ID of the section group
     """
     try:
-        sections = await swing_section_crud.get_sections_by_group(db, section_group_id)
+        sections = swing_section_crud.get_sections_by_group(db, section_group_id)
         return sections
         
     except Exception as e:
@@ -421,19 +421,19 @@ def delete_swing_section(
     """
     try:
         # Get section to retrieve image URL for cleanup
-        section = await swing_section_crud.get_section(db, section_id)
+        section = swing_section_crud.get_section(db, section_id)
         if not section:
             raise HTTPException(status_code=404, detail="セクションが見つかりません")
         
         # Delete image from storage if exists
         if section.image_url:
             try:
-                await storage_service.delete_file(section.image_url)
+                storage_service.delete_file(section.image_url)
             except Exception as e:
                 print(f"Warning: Failed to delete section image: {e}")
         
         # Delete section from database
-        success = await swing_section_crud.delete_section(db, section_id)
+        success = swing_section_crud.delete_section(db, section_id)
         if not success:
             raise HTTPException(status_code=404, detail="セクションが見つかりません")
         
@@ -456,7 +456,7 @@ def analyze_swing_section(
     """
     try:
         # Get section data
-        section = await swing_section_crud.get_section(db, section_id)
+        section = swing_section_crud.get_section(db, section_id)
         if not section:
             raise HTTPException(status_code=404, detail="セクションが見つかりません")
         
@@ -469,7 +469,7 @@ def analyze_swing_section(
         }
         
         # Perform AI analysis
-        analysis = await ai_service.analyze_swing_section(section_data)
+        analysis = ai_service.analyze_swing_section(section_data)
         
         return {
             "section_id": section_id,
@@ -501,7 +501,7 @@ def add_overall_feedback(
     """
     try:
         # Verify section group exists
-        section_group = await section_group_crud.get_section_group(db, section_group_id)
+        section_group = section_group_crud.get_section_group(db, section_group_id)
         if not section_group:
             raise HTTPException(status_code=404, detail="セクショングループが見つかりません")
         
@@ -510,21 +510,21 @@ def add_overall_feedback(
             raise HTTPException(status_code=400, detail="フィードバックタイプは 'overall' または 'next_training' である必要があります")
         
         # Validate audio file format
-        if not await transcription_service.validate_audio_format(audio_file.file):
+        if not transcription_service.validate_audio_format(audio_file.file):
             raise HTTPException(status_code=400, detail="サポートされていない音声ファイル形式です")
         
         # Transcribe audio to text
         try:
-            transcribed_text = await transcription_service.transcribe_audio(audio_file.file)
+            transcribed_text = transcription_service.transcribe_audio(audio_file.file)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"音声の文字起こしに失敗しました: {str(e)}")
         
         # Generate summary using AI
         try:
             if feedback_type == "overall":
-                summary = await ai_service.summarize_overall_feedback(transcribed_text)
+                summary = ai_service.summarize_overall_feedback(transcribed_text)
             else:  # next_training
-                summary = await ai_service.summarize_training_menu(transcribed_text)
+                summary = ai_service.summarize_training_menu(transcribed_text)
         except Exception as e:
             # Fallback to simple truncation if AI fails
             print(f"AI summarization failed: {e}")
@@ -532,11 +532,11 @@ def add_overall_feedback(
         
         # Update section group with feedback
         if feedback_type == "overall":
-            updated_section_group = await section_group_crud.add_overall_feedback(
+            updated_section_group = section_group_crud.add_overall_feedback(
                 db, section_group_id, transcribed_text, summary
             )
         else:  # next_training
-            updated_section_group = await section_group_crud.add_next_training_menu(
+            updated_section_group = section_group_crud.add_next_training_menu(
                 db, section_group_id, transcribed_text, summary
             )
         
@@ -568,7 +568,7 @@ def get_overall_feedback(
     - **section_group_id**: ID of the section group
     """
     try:
-        section_group = await section_group_crud.get_section_group(db, section_group_id)
+        section_group = section_group_crud.get_section_group(db, section_group_id)
         if not section_group:
             raise HTTPException(status_code=404, detail="セクショングループが見つかりません")
         

@@ -28,7 +28,7 @@ load_dotenv()
 @asynccontextmanager
 def lifespan(app: FastAPI):
     # Startup
-    await create_tables()
+    create_tables()
     yield
     # Shutdown（必要なら後処理）
 
@@ -180,12 +180,11 @@ def proxy_file(file_path: str):
         sas_url = media_response["url"]
 
         # 取得してプロキシ
-        async with aiohttp.ClientSession() as session:
-            async with session.get(sas_url) as response:
-                if response.status != 200:
-                    raise HTTPException(status_code=response.status, detail="ファイルの取得に失敗しました")
-                content = await response.read()
-                content_type = response.headers.get("content-type", "application/octet-stream")
+        response = requests.get(sas_url)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="ファイルの取得に失敗しました")
+        content = response.content
+        content_type = response.headers.get("content-type", "application/octet-stream")
                 return Response(
                     content=content,
                     media_type=content_type,
@@ -211,10 +210,10 @@ def upload_section_image(image_file: UploadFile = File(...)):
         if not image_file.content_type or not image_file.content_type.startswith("image/"):
             raise HTTPException(status_code=400, detail="画像ファイルのみアップロード可能です")
 
-        file_content = await image_file.read()
+        file_content = image_file.read()
         file_stream = io.BytesIO(file_content)
 
-        image_url = await storage_service.upload_image(file_stream, image_file.filename or "section_image.jpg")
+        image_url = storage_service.upload_image(file_stream, image_file.filename or "section_image.jpg")
         return {"success": True, "image_url": image_url, "message": "画像のアップロードが完了しました"}
 
     except Exception as e:
@@ -246,7 +245,7 @@ def upload_markup_image(
             raise HTTPException(status_code=400, detail=f"Base64デコードに失敗しました: {str(e)}")
 
         file_stream = io.BytesIO(file_content)
-        image_url = await storage_service.upload_image(file_stream, filename)
+        image_url = storage_service.upload_image(file_stream, filename)
 
         return {"success": True, "image_url": image_url, "message": "マークアップ画像のアップロードが完了しました", "original_url": original_url}
 

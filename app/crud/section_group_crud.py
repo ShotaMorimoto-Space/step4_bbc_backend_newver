@@ -15,18 +15,18 @@ class SectionGroupCRUD:
     def create_section_group(db: Session, section_group: SectionGroupCreate) -> SectionGroup:
         db_section_group = SectionGroup(**section_group.model_dump(exclude_unset=True))
         db.add(db_section_group)
-        await db.commit()
-        await db.refresh(db_section_group)
+        db.commit()
+        db.refresh(db_section_group)
         return db_section_group
 
     @staticmethod
     def get_section_group(db: Session, section_group_id: UUID) -> Optional[SectionGroup]:
-        res = await db.execute(select(SectionGroup).where(SectionGroup.section_group_id == section_group_id))
+        res = db.execute(select(SectionGroup).where(SectionGroup.section_group_id == section_group_id))
         return res.scalar_one_or_none()
 
     @staticmethod
     def get_section_group_with_sections(db: Session, section_group_id: UUID) -> Optional[SectionGroup]:
-        res = await db.execute(
+        res = db.execute(
             select(SectionGroup)
             .options(selectinload(SectionGroup.sections))
             .where(SectionGroup.section_group_id == section_group_id)
@@ -42,7 +42,7 @@ class SectionGroupCRUD:
     ) -> Optional[SectionGroup]:
         from datetime import datetime, timezone
 
-        await db.execute(
+        db.execute(
             update(SectionGroup)
             .where(SectionGroup.section_group_id == section_group_id)
             .values(
@@ -51,8 +51,8 @@ class SectionGroupCRUD:
                 feedback_created_at=datetime.now(timezone.utc),
             )
         )
-        await db.commit()
-        return await SectionGroupCRUD.get_section_group(db, section_group_id)
+        db.commit()
+        return SectionGroupCRUD.get_section_group(db, section_group_id)
 
     @staticmethod
     def add_next_training_menu(
@@ -63,7 +63,7 @@ class SectionGroupCRUD:
     ) -> Optional[SectionGroup]:
         from datetime import datetime, timezone
 
-        await db.execute(
+        db.execute(
             update(SectionGroup)
             .where(SectionGroup.section_group_id == section_group_id)
             .values(
@@ -72,8 +72,8 @@ class SectionGroupCRUD:
                 feedback_created_at=datetime.now(timezone.utc),
             )
         )
-        await db.commit()
-        return await SectionGroupCRUD.get_section_group(db, section_group_id)
+        db.commit()
+        return SectionGroupCRUD.get_section_group(db, section_group_id)
 
 
 section_group_crud = SectionGroupCRUD()

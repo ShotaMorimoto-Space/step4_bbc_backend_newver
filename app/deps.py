@@ -48,7 +48,7 @@ def get_current_user_or_dummy(
         if not sub:
             raise ValueError("no sub in token")
         # 必要ならここでDBからユーザー確認（例）
-        # user = await user_crud.get(db, sub)
+        # user = user_crud.get(db, sub)
         # if not user or not user.is_active:
         #     raise ValueError("inactive/unknown user")
         return sub
@@ -71,7 +71,7 @@ def get_current_user_strict(
     if not sub:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
     # 必要ならDB検証
-    # user = await user_crud.get(db, sub)
+    # user = user_crud.get(db, sub)
     # if not user or not user.is_active:
     #     raise HTTPException(status_code=401, detail="User not active")
     return sub

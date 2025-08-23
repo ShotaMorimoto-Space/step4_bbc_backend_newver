@@ -264,7 +264,7 @@ else:
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = ssl.CERT_NONE  # 証明書なしでTLS必須環境を満たす
 
-engine = create_async_engine(
+engine = create_engine(
     DATABASE_URL,
     echo=(settings.env.lower() == "development"),
     pool_size=5,

@@ -32,23 +32,23 @@ class CoachCRUD:
             location_id=coach_in.location_id,
         )
         db.add(coach)
-        await db.commit()
-        await db.refresh(coach)
+        db.commit()
+        db.refresh(coach)
         return coach
 
     @staticmethod
     def get(db: Session, coach_id: UUID) -> Optional[Coach]:
-        res = await db.execute(select(Coach).where(Coach.coach_id == coach_id))
+        res = db.execute(select(Coach).where(Coach.coach_id == coach_id))
         return res.scalar_one_or_none()
 
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[Coach]:
-        res = await db.execute(select(Coach).where(Coach.email == email))
+        res = db.execute(select(Coach).where(Coach.email == email))
         return res.scalar_one_or_none()
 
     @staticmethod
     def list(db: Session, skip: int = 0, limit: int = 100) -> List[Coach]:
-        res = await db.execute(
+        res = db.execute(
             select(Coach).order_by(Coach.created_at.desc()).offset(skip).limit(limit)
         )
         return res.scalars().all()
