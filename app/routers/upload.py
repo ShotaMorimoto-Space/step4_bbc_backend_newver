@@ -90,7 +90,7 @@ async def upload_video(
         from io import BytesIO
         video_bytes_for_upload = BytesIO(video_content)
         logger.info("動画をストレージにアップロード中...")
-        video_url = storage_service.upload_video(
+        video_url = await storage_service.upload_video(
             video_bytes_for_upload,
             video_file.filename or "video.mp4"
         )
