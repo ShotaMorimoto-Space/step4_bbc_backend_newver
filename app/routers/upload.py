@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from typing import Optional
 from uuid import UUID
 import uuid
@@ -34,7 +34,7 @@ async def upload_video(
     swing_note: Optional[str] = Form(None),
     user_email: Optional[str] = Form(None),
     user_id: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Upload golf swing video
@@ -62,7 +62,7 @@ async def upload_video(
             from sqlalchemy import select
             
             user_query = select(User).where(User.email == user_email)
-            user_result = await db.execute(user_query)
+            user_result = db.execute(user_query)
             user = user_result.scalar_one_or_none()
             
             if user:
@@ -90,7 +90,7 @@ async def upload_video(
         from io import BytesIO
         video_bytes_for_upload = BytesIO(video_content)
         logger.info("動画をストレージにアップロード中...")
-        video_url = await storage_service.upload_video(
+        video_url = storage_service.upload_video(
             video_bytes_for_upload,
             video_file.filename or "video.mp4"
         )
@@ -115,7 +115,7 @@ async def upload_video(
             
             # Upload thumbnail with same base name as video
             thumbnail_filename = f"{thumbnail_base_name}.jpg"
-            thumbnail_url = await storage_service.upload_image_with_exact_name(
+            thumbnail_url = storage_service.upload_image_with_exact_name(
                 thumbnail_data,
                 thumbnail_filename
             )
@@ -176,7 +176,7 @@ async def upload_thumbnail(
             raise HTTPException(status_code=400, detail="アップロードされたファイルは画像ファイルである必要があります")
         
         # Upload thumbnail to storage
-        thumbnail_url = await storage_service.upload_image(
+        thumbnail_url = storage_service.upload_image(
             thumbnail_file.file,
             thumbnail_file.filename or "thumbnail.jpg"
         )
@@ -247,9 +247,9 @@ async def delete_video(
         
         # Delete files from storage
         try:
-            await storage_service.delete_file(video.video_url)
+            storage_service.delete_file(video.video_url)
             if video.thumbnail_url:
-                await storage_service.delete_file(video.thumbnail_url)
+                storage_service.delete_file(video.thumbnail_url)
         except Exception as e:
             print(f"Warning: Failed to delete files from storage: {e}")
         
@@ -524,7 +524,7 @@ async def capture_video_frame(
             
             # Azure Blob Storageにアップロード（正確なファイル名で保存）
             logger.info("Azure Blob Storageにアップロード中...")
-            image_url = await storage_service.upload_image_with_exact_name(
+            image_url = storage_service.upload_image_with_exact_name(
                 io.BytesIO(image_data),
                 filename
             )
@@ -590,7 +590,7 @@ async def upload_markup_image(
         
         # Azure Blob Storageにアップロード
         logger.info("Azure Blob Storageにアップロード中...")
-        image_url = await storage_service.upload_image_with_exact_name(
+        image_url = storage_service.upload_image_with_exact_name(
             io.BytesIO(image_bytes),
             filename
         )
