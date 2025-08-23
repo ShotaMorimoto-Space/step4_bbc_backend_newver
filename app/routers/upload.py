@@ -157,7 +157,7 @@ async def upload_video(
 async def upload_thumbnail(
     video_id: UUID,
     thumbnail_file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Upload thumbnail image for a video
@@ -200,7 +200,7 @@ async def upload_thumbnail(
 @router.get("/upload-status/{video_id}")
 async def get_upload_status(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Get upload status and video information
@@ -232,7 +232,7 @@ async def get_upload_status(
 @router.delete("/video/{video_id}")
 async def delete_video(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Delete a video and its associated files
@@ -268,7 +268,7 @@ async def delete_video(
 
 @router.post("/clear-all-data")
 async def clear_all_data(
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Clear all video data and uploaded files
