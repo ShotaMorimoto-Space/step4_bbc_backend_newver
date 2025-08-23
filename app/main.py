@@ -74,36 +74,36 @@ async def health_check():
         print("=== ヘルスチェック開始 ===")
         
         # データベース接続の確認
-        from app.database import get_database
+        from app.database import get_db
         from app.models import User
         
-        async for db in get_database():
-            try:
-                # 簡単なクエリを実行してデータベース接続を確認
-                result = await db.execute("SELECT 1")
-                print("データベース接続: 成功")
-                
-                # Userテーブルの件数を確認
-                user_count = await db.execute(select(User).count())
-                print(f"Userテーブル件数: {user_count}")
-                
-                return {
-                    "status": "healthy",
-                    "database": "connected",
-                    "user_count": user_count,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            except Exception as db_error:
-                print(f"データベースエラー: {str(db_error)}")
-                return {
-                    "status": "unhealthy",
-                    "database": "error",
-                    "error": str(db_error),
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            finally:
-                await db.close()
-                
+        # データベースセッションを取得
+        db = next(get_db())
+        try:
+            # 簡単なクエリを実行してデータベース接続を確認
+            result = db.execute("SELECT 1")
+            print("データベース接続: 成功")
+            
+            # Userテーブルの件数を確認
+            user_count = db.execute(select(User)).scalar()
+            print(f"Userテーブル件数: {user_count}")
+            
+            return {
+                "status": "healthy",
+                "database": "connected",
+                "user_count": user_count,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        except Exception as db_error:
+            print(f"データベースエラー: {str(db_error)}")
+            return {
+                "status": "unhealthy",
+                "database": "error",
+                "error": str(db_error),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        finally:
+            db.close()
     except Exception as e:
         print(f"ヘルスチェックエラー: {str(e)}")
         return {

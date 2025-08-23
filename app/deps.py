@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import get_db
+from app.database import get_db  # 正しいモジュールからインポート
 from app.core.jwt import decode_access_token  # JWTデコード（app/core/jwt.py）
 
 load_dotenv()
@@ -19,8 +19,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 async def get_database() -> AsyncGenerator[AsyncSession, None]:
     """Async DB session dependency"""
-    async for session in get_db():
+    # 同期的なget_dbを非同期で実行
+    from app.database import SessionLocal
+    
+    # 非同期セッションを作成
+    session = SessionLocal()
+    try:
         yield session
+    finally:
+        session.close()
 
 def get_default_user_id() -> str:
     """Dev用の固定ユーザーID（.env: DEFAULT_USER_ID が優先）"""
