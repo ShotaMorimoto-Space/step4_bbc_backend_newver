@@ -24,7 +24,7 @@ from sqlalchemy import (
     Boolean,
 )
 from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from sqlalchemy.sql import func
 
@@ -264,7 +264,7 @@ else:
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = ssl.CERT_NONE  # 証明書なしでTLS必須環境を満たす
 
-engine = create_engine(
+engine = create_async_engine(
     DATABASE_URL,
     echo=(settings.env.lower() == "development"),
     pool_size=5,
@@ -274,14 +274,17 @@ engine = create_engine(
     connect_args={"ssl": ssl_ctx},
 )
 
-SessionLocal = sessionmaker(engine, expire_on_commit=False)
+async_session = sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 
-def create_tables():
-    Base.metadata.create_all(bind=engine)
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-def get_db():
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+async def get_db():
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
