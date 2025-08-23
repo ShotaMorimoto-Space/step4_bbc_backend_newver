@@ -58,4 +58,4 @@ jobs:
         with:
           app-name: 'aps-bbc-02'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_7130F0BFF3FA4CDFAD4C27987882E6C1 }}
