@@ -9,7 +9,6 @@ import uuid
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
-import aiohttp
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 
