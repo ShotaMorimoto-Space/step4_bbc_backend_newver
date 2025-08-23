@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import os
-from typing import Optional, AsyncGenerator  # ← 追加
+from typing import Optional, Generator  # AsyncGeneratorからGeneratorに変更
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session  # AsyncSessionからSessionに変更
 
 from app.database import get_db  # 正しいモジュールからインポート
 from app.core.jwt import decode_access_token  # JWTデコード（app/core/jwt.py）
@@ -17,17 +17,11 @@ load_dotenv()
 # 本番ルートに合わせる（/api/v1 を使わないなら "/auth/token" に変更）
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
-async def get_database() -> AsyncGenerator[AsyncSession, None]:
-    """Async DB session dependency"""
-    # 同期的なget_dbを非同期で実行
-    from app.database import SessionLocal
-    
-    # 非同期セッションを作成
-    session = SessionLocal()
-    try:
+def get_database() -> Generator[Session, None, None]:
+    """Sync DB session dependency"""
+    # 同期的なget_dbを使用
+    for session in get_db():
         yield session
-    finally:
-        session.close()
 
 def get_default_user_id() -> str:
     """Dev用の固定ユーザーID（.env: DEFAULT_USER_ID が優先）"""
@@ -40,7 +34,7 @@ def get_default_coach_id() -> str:
 # ---------- 認証切替ポイント ----------
 async def get_current_user_or_dummy(
     token: Optional[str] = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_database),  # 将来のユーザー検証用に保持
+    db: Session = Depends(get_database),  # 将来のユーザー検証用に保持
 ) -> str:
     """
     開発中：トークンが無ければデフォルトIDを返す。
@@ -66,7 +60,7 @@ async def get_current_user_or_dummy(
 
 async def get_current_user_strict(
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ) -> str:
     """
     本番で“ログイン必須”にする場合はこちらをDependsに。
