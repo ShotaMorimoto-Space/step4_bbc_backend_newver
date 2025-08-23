@@ -5,7 +5,7 @@ import os
 import io
 import requests
 from datetime import datetime, timedelta
-from contextlib import contextmanager
+
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,19 +25,10 @@ from app.routers import auth, user, video, coach, upload, transcription, line, l
 load_dotenv()
 
 
-@contextmanager
-def lifespan(app: FastAPI):
-    # Startup
-    create_tables()
-    yield
-    # Shutdown（必要なら後処理）
-
-
 app = FastAPI(
     title="Golf Swing Coaching API",
     description="API for managing golf swing video coaching feedback",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 # ---- CORS ----
