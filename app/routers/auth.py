@@ -123,23 +123,69 @@ async def login_any(
     form: OAuth2PasswordRequestForm = Depends(),  # username に email を入れて送る
     db: AsyncSession = Depends(get_database),
 ):
-    email = form.username
+    try:
+        print(f"=== ログイン試行開始 ===")
+        print(f"受信したemail: {form.username}")
+        print(f"パスワード長: {len(form.password) if form.password else 0}")
+        
+        email = form.username
+        
+        if not email:
+            print("エラー: emailが空です")
+            raise HTTPException(status_code=400, detail="メールアドレスが入力されていません")
+        
+        if not form.password:
+            print("エラー: パスワードが空です")
+            raise HTTPException(status_code=400, detail="パスワードが入力されていません")
 
-    # Userとして認証
-    u = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
-    if u and verify_password(form.password, u.password_hash):
-        expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        token = create_access_token({"sub": str(u.user_id), "role": "user"}, expires)
-        return {"access_token": token, "token_type": "bearer", "role": "user"}
+        # Userとして認証
+        print(f"Userテーブルで検索中: {email}")
+        u = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+        
+        if u:
+            print(f"Userが見つかりました: {u.user_id}")
+            print(f"パスワード検証中...")
+            if verify_password(form.password, u.password_hash):
+                print(f"パスワード検証成功")
+                expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+                token = create_access_token({"sub": str(u.user_id), "role": "user"}, expires)
+                print(f"トークン生成成功: {token[:20]}...")
+                return {"access_token": token, "token_type": "bearer", "role": "user"}
+            else:
+                print(f"パスワード検証失敗")
+        else:
+            print(f"Userが見つかりませんでした: {email}")
 
-    # Coachとして認証
-    c = (await db.execute(select(Coach).where(Coach.email == email))).scalar_one_or_none()
-    if c and verify_password(form.password, c.password_hash):
-        expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        token = create_access_token({"sub": str(c.coach_id), "role": "coach"}, expires)
-        return {"access_token": token, "token_type": "bearer", "role": "coach"}
+        # Coachとして認証
+        print(f"Coachテーブルで検索中: {email}")
+        c = (await db.execute(select(Coach).where(Coach.email == email))).scalar_one_or_none()
+        
+        if c:
+            print(f"Coachが見つかりました: {c.coach_id}")
+            print(f"パスワード検証中...")
+            if verify_password(form.password, c.password_hash):
+                print(f"パスワード検証成功")
+                expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+                token = create_access_token({"sub": str(c.coach_id), "role": "coach"}, expires)
+                print(f"トークン生成成功: {token[:20]}...")
+                return {"access_token": token, "token_type": "bearer", "role": "coach"}
+            else:
+                print(f"パスワード検証失敗")
+        else:
+            print(f"Coachが見つかりませんでした: {email}")
 
-    raise HTTPException(status_code=401, detail="メールアドレスまたはパスワードが正しくありません")
+        print(f"認証失敗: メールアドレスまたはパスワードが正しくありません")
+        raise HTTPException(status_code=401, detail="メールアドレスまたはパスワードが正しくありません")
+        
+    except HTTPException:
+        # HTTPExceptionは再送出
+        raise
+    except Exception as e:
+        print(f"ログイン処理で予期しないエラーが発生: {str(e)}")
+        print(f"エラータイプ: {type(e).__name__}")
+        import traceback
+        print(f"スタックトレース: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"ログイン処理でエラーが発生しました: {str(e)}")
 
 
 # ---------------------------
