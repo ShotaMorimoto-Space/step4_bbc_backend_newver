@@ -7,7 +7,8 @@ import logging
 from io import BytesIO
 from PIL import Image
 
-logger = logging.getLogger(__name__)
+# メインのロガーを使用
+from app.utils.logger import logger
 
 class ThumbnailService:
     """Video thumbnail generation service"""
