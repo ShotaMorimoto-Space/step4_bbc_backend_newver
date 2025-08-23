@@ -32,6 +32,7 @@ async def upload_video(
     club_type: Optional[str] = Form(None),
     swing_form: Optional[str] = Form(None),
     swing_note: Optional[str] = Form(None),
+    user_email: Optional[str] = Form(None),
     user_id: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_database)
 ):
@@ -42,7 +43,8 @@ async def upload_video(
     - **club_type**: Type of club used (optional)
     - **swing_form**: Swing type (e.g., full_swing, chip) (optional)
     - **swing_note**: User's notes about the swing (optional)
-    - **user_id**: User ID (optional, uses default if not provided)
+    - **user_email**: User email (optional, used to find user_id)
+    - **user_id**: User ID (optional, uses email lookup if not provided)
     """
     try:
         logger.info(f"動画アップロード開始: ファイル名={video_file.filename}, サイズ={video_file.size}")
@@ -52,9 +54,32 @@ async def upload_video(
             logger.error(f"無効なファイル形式: {video_file.content_type}")
             raise HTTPException(status_code=400, detail="アップロードされたファイルは動画ファイルである必要があります")
         
-        # Get user ID (use provided or default)
-        actual_user_id = user_id if user_id else get_default_user_id()
-        logger.info(f"ユーザーID: {actual_user_id}")
+        # Get user ID from email or provided user_id
+        actual_user_id = None
+        if user_email:
+            # メールアドレスからユーザーIDを取得
+            from app.models import User
+            from sqlalchemy import select
+            
+            user_query = select(User).where(User.email == user_email)
+            user_result = await db.execute(user_query)
+            user = user_result.scalar_one_or_none()
+            
+            if user:
+                actual_user_id = str(user.user_id)
+                logger.info(f"メールアドレスからユーザーIDを取得: {actual_user_id}")
+            else:
+                logger.error(f"メールアドレス {user_email} に対応するユーザーが見つかりません")
+                raise HTTPException(status_code=400, detail="ユーザーが見つかりません")
+        elif user_id:
+            actual_user_id = user_id
+            logger.info(f"提供されたユーザーIDを使用: {actual_user_id}")
+        else:
+            # デフォルトユーザーIDを使用（テスト用）
+            actual_user_id = get_default_user_id()
+            logger.info(f"デフォルトユーザーIDを使用: {actual_user_id}")
+        
+        logger.info(f"最終的なユーザーID: {actual_user_id}")
         
         # Read video content once for both upload and thumbnail generation
         video_file.file.seek(0)
