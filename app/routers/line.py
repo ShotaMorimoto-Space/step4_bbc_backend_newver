@@ -13,7 +13,7 @@ import aiohttp
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.models import User
@@ -34,7 +34,7 @@ USE_DUMMY = not (LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN)
 # ---------------------------
 # ユーティリティ
 # ---------------------------
-async def ensure_guest_user(db: AsyncSession, line_user_id: str) -> User:
+def ensure_guest_user(db: Session, line_user_id: str) -> User:
     """line_user_id で users を検索。なければ guest を自動作成して返す。"""
     existing = (await db.execute(
         select(User).where(User.line_user_id == line_user_id)
@@ -59,7 +59,7 @@ async def ensure_guest_user(db: AsyncSession, line_user_id: str) -> User:
     return guest
 
 
-async def verify_line_signature(body_bytes: bytes, signature_b64: str) -> bool:
+def verify_line_signature(body_bytes: bytes, signature_b64: str) -> bool:
     """X-Line-Signature 検証（本番用）。"""
     if USE_DUMMY:
         return True
@@ -68,7 +68,7 @@ async def verify_line_signature(body_bytes: bytes, signature_b64: str) -> bool:
     return hmac.compare_digest(expected, signature_b64 or "")
 
 
-async def line_get_message_content(message_id: str) -> bytes:
+def line_get_message_content(message_id: str) -> bytes:
     """メッセージバイナリを取得（画像/動画/音声）。"""
     if USE_DUMMY:
         # ダミー用: 空のバイト列
@@ -83,7 +83,7 @@ async def line_get_message_content(message_id: str) -> bytes:
             return await resp.read()
 
 
-async def line_reply(reply_token: str, texts: list[str]) -> None:
+def line_reply(reply_token: str, texts: list[str]) -> None:
     """返信テキストを送信。"""
     if USE_DUMMY:
         logger.info(f"[DUMMY] reply -> {texts}")
@@ -108,10 +108,10 @@ async def line_reply(reply_token: str, texts: list[str]) -> None:
 # 1) LINE Webhook（画像/動画受け取り）
 # ---------------------------
 @router.post("/webhook")
-async def webhook(
+def webhook(
     request: Request,
     x_line_signature: Optional[str] = Header(None, alias="X-Line-Signature"),
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     body_bytes = await request.body()
 
@@ -206,7 +206,7 @@ class LineLoginRequest(BaseModel):
 
 
 @router.post("/login")
-async def line_login(payload: LineLoginRequest, db: AsyncSession = Depends(get_database)):
+def line_login(payload: LineLoginRequest, db: Session = Depends(get_database)):
     """
     - 本番：id_token を検証 → sub(=line_user_id) 抽出 → ゲスト確保/昇格 → JWT発行
     - 開発：line_user_id を直接受けてゲスト確保 → JWT発行
@@ -246,5 +246,5 @@ class DevEchoRequest(BaseModel):
 
 
 @router.post("/dev/echo")
-async def dev_echo(payload: DevEchoRequest):
+def dev_echo(payload: DevEchoRequest):
     return {"echo": payload.text}

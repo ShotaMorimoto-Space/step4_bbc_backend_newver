@@ -26,7 +26,7 @@ load_dotenv()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+def lifespan(app: FastAPI):
     # Startup
     await create_tables()
     yield
@@ -71,11 +71,11 @@ app.include_router(b_router, prefix="/api/v1/b", tags=["app_b_login"])
 
 # ---- Health / Root ----
 @app.get("/")
-async def root():
+def root():
     return {"message": "Golf Swing Coaching API is running"}
 
 @app.get("/health")
-async def health_check():
+def health_check():
     try:
         print("=== ヘルスチェック開始 ===")
         
@@ -164,7 +164,7 @@ def get_media_url(blob_url: str):
 
 # ---- Azure Blob のプロキシ（SAS を内部発行して取得）----
 @app.get("/proxy-file/{file_path:path}")
-async def proxy_file(file_path: str):
+def proxy_file(file_path: str):
     """
     Azure Blob Storage ファイルのプロキシエンドポイント
     """
@@ -203,7 +203,7 @@ async def proxy_file(file_path: str):
 
 # ---- 画像アップロード（セクション切り出し画像）----
 @app.post("/upload-section-image")
-async def upload_section_image(image_file: UploadFile = File(...)):
+def upload_section_image(image_file: UploadFile = File(...)):
     """
     セクション切り出し画像を Azure Blob Storage にアップロード
     """
@@ -223,7 +223,7 @@ async def upload_section_image(image_file: UploadFile = File(...)):
 
 # ---- 画像アップロード（マークアップ画像：Base64入力）----
 @app.post("/upload-markup-image")
-async def upload_markup_image(
+def upload_markup_image(
     image_data: str = Form(...),
     filename: str = Form(...),
     original_url: str = Form(...),

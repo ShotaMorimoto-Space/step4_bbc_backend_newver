@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
@@ -12,7 +12,7 @@ from app.schemas.section import SectionGroupCreate
 
 class SectionGroupCRUD:
     @staticmethod
-    async def create_section_group(db: AsyncSession, section_group: SectionGroupCreate) -> SectionGroup:
+    def create_section_group(db: Session, section_group: SectionGroupCreate) -> SectionGroup:
         db_section_group = SectionGroup(**section_group.model_dump(exclude_unset=True))
         db.add(db_section_group)
         await db.commit()
@@ -20,12 +20,12 @@ class SectionGroupCRUD:
         return db_section_group
 
     @staticmethod
-    async def get_section_group(db: AsyncSession, section_group_id: UUID) -> Optional[SectionGroup]:
+    def get_section_group(db: Session, section_group_id: UUID) -> Optional[SectionGroup]:
         res = await db.execute(select(SectionGroup).where(SectionGroup.section_group_id == section_group_id))
         return res.scalar_one_or_none()
 
     @staticmethod
-    async def get_section_group_with_sections(db: AsyncSession, section_group_id: UUID) -> Optional[SectionGroup]:
+    def get_section_group_with_sections(db: Session, section_group_id: UUID) -> Optional[SectionGroup]:
         res = await db.execute(
             select(SectionGroup)
             .options(selectinload(SectionGroup.sections))
@@ -34,8 +34,8 @@ class SectionGroupCRUD:
         return res.scalars().unique().one_or_none()
 
     @staticmethod
-    async def add_overall_feedback(
-        db: AsyncSession,
+    def add_overall_feedback(
+        db: Session,
         section_group_id: UUID,
         overall_feedback: str,
         overall_feedback_summary: str,
@@ -55,8 +55,8 @@ class SectionGroupCRUD:
         return await SectionGroupCRUD.get_section_group(db, section_group_id)
 
     @staticmethod
-    async def add_next_training_menu(
-        db: AsyncSession,
+    def add_next_training_menu(
+        db: Session,
         section_group_id: UUID,
         next_training_menu: str,
         next_training_menu_summary: str,

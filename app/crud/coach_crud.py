@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.models import Coach
@@ -12,7 +12,7 @@ from app.core.security import get_password_hash
 
 class CoachCRUD:
     @staticmethod
-    async def create_coach(db: AsyncSession, coach_in: CoachCreate) -> Coach:
+    def create_coach(db: Session, coach_in: CoachCreate) -> Coach:
         coach = Coach(
             usertype=coach_in.usertype or "coach",
             coachname=coach_in.coachname,
@@ -37,17 +37,17 @@ class CoachCRUD:
         return coach
 
     @staticmethod
-    async def get(db: AsyncSession, coach_id: UUID) -> Optional[Coach]:
+    def get(db: Session, coach_id: UUID) -> Optional[Coach]:
         res = await db.execute(select(Coach).where(Coach.coach_id == coach_id))
         return res.scalar_one_or_none()
 
     @staticmethod
-    async def get_by_email(db: AsyncSession, email: str) -> Optional[Coach]:
+    def get_by_email(db: Session, email: str) -> Optional[Coach]:
         res = await db.execute(select(Coach).where(Coach.email == email))
         return res.scalar_one_or_none()
 
     @staticmethod
-    async def list(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[Coach]:
+    def list(db: Session, skip: int = 0, limit: int = 100) -> List[Coach]:
         res = await db.execute(
             select(Coach).order_by(Coach.created_at.desc()).offset(skip).limit(limit)
         )

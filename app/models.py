@@ -24,7 +24,7 @@ from sqlalchemy import (
     Boolean,
 )
 from sqlalchemy.dialects.mysql import CHAR as MYSQL_CHAR
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from sqlalchemy.sql import func
 
@@ -274,15 +274,14 @@ engine = create_async_engine(
     connect_args={"ssl": ssl_ctx},
 )
 
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+SessionLocal = sessionmaker(engine, expire_on_commit=False)
 
-async def create_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+def create_tables():
+    Base.metadata.create_all(bind=engine)
 
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+def get_db():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
 
@@ -22,23 +22,23 @@ def _normalize_video_update_payload(data: dict) -> dict:
 class VideoCRUD:
     # ---- 作成 ----
     @staticmethod
-    async def create_video(db: AsyncSession, video: VideoCreate) -> Video:
+    def create_video(db: Session, video: VideoCreate) -> Video:
         db_video = Video(**video.model_dump(exclude_unset=True))
         db_video.is_pinned = False
         db_video.is_reviewed = False
         db.add(db_video)
-        await db.commit()
-        await db.refresh(db_video)
+        db.commit()
+        db.refresh(db_video)
         return db_video
 
     # ---- 取得 ----
     @staticmethod
-    async def get_video(db: AsyncSession, video_id: UUID) -> Optional[Video]:
+    def get_video(db: Session, video_id: UUID) -> Optional[Video]:
         res = await db.execute(select(Video).where(Video.video_id == video_id))
         return res.scalar_one_or_none()
 
     @staticmethod
-    async def get_video_with_sections(db: AsyncSession, video_id: UUID) -> Optional[Video]:
+    def get_video_with_sections(db: Session, video_id: UUID) -> Optional[Video]:
         res = await db.execute(
             select(Video)
             .options(selectinload(Video.section_groups).selectinload(SectionGroup.sections))
@@ -47,8 +47,8 @@ class VideoCRUD:
         return res.scalars().unique().one_or_none()
 
     @staticmethod
-    async def get_videos_by_user(
-        db: AsyncSession, user_id: UUID, skip: int = 0, limit: int = 100
+    def get_videos_by_user(
+        db: Session, user_id: UUID, skip: int = 0, limit: int = 100
     ) -> List[Video]:
         res = await db.execute(
             select(Video)
@@ -60,8 +60,8 @@ class VideoCRUD:
         return res.scalars().all()
 
     @staticmethod
-    async def get_all_videos_with_sections(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+    def get_all_videos_with_sections(
+        db: Session, skip: int = 0, limit: int = 100
     ) -> List[Video]:
         res = await db.execute(
             select(Video)
@@ -74,7 +74,7 @@ class VideoCRUD:
 
     # ---- 更新 ----
     @staticmethod
-    async def update_video(db: AsyncSession, video_id: UUID, video_update: VideoUpdate) -> Optional[Video]:
+    def update_video(db: Session, video_id: UUID, video_update: VideoUpdate) -> Optional[Video]:
         update_data = {
             k: v for k, v in video_update.model_dump(exclude_unset=True).items() if v is not None
         }
@@ -90,14 +90,14 @@ class VideoCRUD:
 
     # ---- 削除 ----
     @staticmethod
-    async def delete_video(db: AsyncSession, video_id: UUID) -> bool:
+    def delete_video(db: Session, video_id: UUID) -> bool:
         res = await db.execute(delete(Video).where(Video.video_id == video_id))
         await db.commit()
         return (res.rowcount or 0) > 0
 
     # ---- ピン留め ----
     @staticmethod
-    async def set_pinned_video(db: AsyncSession, user_id: UUID, video_id: UUID):
+    def set_pinned_video(db: Session, user_id: UUID, video_id: UUID):
         # 既存のピンを外す
         await db.execute(
             update(Video).where(Video.user_id == user_id).values(is_pinned=False)
@@ -109,7 +109,7 @@ class VideoCRUD:
         await db.commit()
 
     @staticmethod
-    async def get_pinned_video(db: AsyncSession, user_id: UUID) -> Optional[Video]:
+    def get_pinned_video(db: Session, user_id: UUID) -> Optional[Video]:
         res = await db.execute(
             select(Video).where(Video.user_id == user_id, Video.is_pinned == True)
         )
@@ -117,7 +117,7 @@ class VideoCRUD:
 
     # ---- 添削済み ----
     @staticmethod
-    async def mark_video_as_reviewed(db: AsyncSession, video_id: UUID):
+    def mark_video_as_reviewed(db: Session, video_id: UUID):
         await db.execute(
             update(Video).where(Video.video_id == video_id).values(is_reviewed=True)
         )

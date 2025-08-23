@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from decimal import Decimal
@@ -23,7 +23,7 @@ router = APIRouter()
 async def save_advices(
     video_id: str,
     advices: List[Dict[str, Any]],
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     アドバイスデータを保存する
@@ -55,7 +55,7 @@ async def save_advices(
 @router.get("/get-advices/{video_id}")
 async def get_advices(
     video_id: str,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     アドバイスデータを取得する
@@ -86,7 +86,7 @@ async def save_markup_image(
     image_data: str = Form(...),
     filename: str = Form(...),
     original_url: str = Form(...),
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     マークアップ画像データを保存する
@@ -123,7 +123,7 @@ async def save_markup_image(
 @router.get("/get-markup-image/{filename}")
 async def get_markup_image(
     filename: str,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     マークアップ画像データを取得する
@@ -154,7 +154,7 @@ async def get_markup_image(
 @router.post("/create-section-group/{video_id}", response_model=SectionGroupResponse)
 async def create_section_group(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Create a section group for a video to start adding swing sections
@@ -198,7 +198,7 @@ async def add_swing_section(
     image_url: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     coach_comment: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Add a swing section to a section group
@@ -287,7 +287,7 @@ async def add_coach_comment(
     section_id: UUID,
     audio_file: UploadFile = File(...),
     coach_id: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Add coach comment via audio transcription
@@ -343,7 +343,7 @@ async def add_coach_comment(
 async def update_swing_section(
     section_id: UUID,
     section_update: SwingSectionUpdate,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Update swing section details
@@ -373,7 +373,7 @@ async def update_swing_section(
 @router.get("/section/{section_id}", response_model=SwingSectionResponse)
 async def get_swing_section(
     section_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Get swing section details
@@ -395,7 +395,7 @@ async def get_swing_section(
 @router.get("/sections/{section_group_id}", response_model=List[SwingSectionResponse])
 async def get_sections_by_group(
     section_group_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Get all sections for a section group
@@ -412,7 +412,7 @@ async def get_sections_by_group(
 @router.delete("/section/{section_id}")
 async def delete_swing_section(
     section_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Delete a swing section
@@ -447,7 +447,7 @@ async def delete_swing_section(
 @router.post("/analyze-section/{section_id}")
 async def analyze_swing_section(
     section_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Analyze swing section using AI to suggest tags and insights
@@ -489,7 +489,7 @@ async def add_overall_feedback(
     audio_file: UploadFile = File(...),
     feedback_type: str = Form(...),  # "overall" or "next_training"
     coach_id: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Add overall feedback via audio transcription
@@ -560,7 +560,7 @@ async def add_overall_feedback(
 @router.get("/overall-feedback/{section_group_id}", response_model=OverallFeedbackResponse)
 async def get_overall_feedback(
     section_group_id: UUID,
-    db: AsyncSession = Depends(get_database)
+    db: Session = Depends(get_database)
 ):
     """
     Get overall feedback for a section group

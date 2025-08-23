@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.deps import get_database, get_default_user_id
 from app.schemas.video import (
@@ -28,7 +28,7 @@ router = APIRouter(tags=["videos"])
 @router.get("/video/{video_id}", response_model=VideoResponse)
 async def get_video_details(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Get detailed information about a specific video
@@ -46,7 +46,7 @@ async def get_video_details(
 @router.get("/video/{video_id}/with-sections", response_model=VideoWithSectionsResponse)
 async def get_video_with_sections(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Get video with all coaching sections and comments
@@ -79,7 +79,7 @@ async def get_video_with_sections(
 @router.get("/video/{video_id}/feedback-summary")
 async def get_video_feedback_summary(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Summarize feedback for a video
@@ -130,7 +130,7 @@ async def get_video_feedback_summary(
 async def get_all_videos(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Get all videos for coach dashboard (all users)
@@ -150,7 +150,7 @@ async def search_videos(
     club_type: Optional[str] = Query(None, description="Filter by club type"),
     swing_form: Optional[str] = Query(None, description="Filter by swing form"),
     has_feedback: Optional[bool] = Query(None, description="Filter videos with/without feedback"),
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Search and filter videos based on criteria
@@ -192,7 +192,7 @@ async def search_videos(
 async def create_session(
     video_id: UUID,
     payload: CoachingSessionCreate,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Create a new coaching session request for a video
@@ -215,7 +215,7 @@ async def create_session(
 @router.get("/video/{video_id}/sessions", response_model=List[CoachingSessionResponse])
 async def list_sessions_for_video(
     video_id: UUID,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Get all coaching sessions for a specific video
@@ -233,7 +233,7 @@ async def list_sessions_for_video(
 @router.get("/session/{session_id}", response_model=CoachingSessionResponse)
 async def get_session(
     session_id: UUID,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Get details of a specific session
@@ -249,7 +249,7 @@ async def get_session(
 async def update_session(
     session_id: UUID,
     payload: CoachingSessionUpdate,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Update session status or info
@@ -270,7 +270,7 @@ async def update_session(
 @router.delete("/session/{session_id}")
 async def delete_session(
     session_id: UUID,
-    db: AsyncSession = Depends(get_database),
+    db: Session = Depends(get_database),
 ):
     """
     Delete a coaching session (if allowed)

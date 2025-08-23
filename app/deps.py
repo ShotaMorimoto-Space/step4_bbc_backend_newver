@@ -32,7 +32,7 @@ def get_default_coach_id() -> str:
     return os.getenv("DEFAULT_COACH_ID", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 
 # ---------- 認証切替ポイント ----------
-async def get_current_user_or_dummy(
+def get_current_user_or_dummy(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_database),  # 将来のユーザー検証用に保持
 ) -> str:
@@ -58,7 +58,7 @@ async def get_current_user_or_dummy(
             detail="Invalid or expired token",
         )
 
-async def get_current_user_strict(
+def get_current_user_strict(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_database),
 ) -> str:
