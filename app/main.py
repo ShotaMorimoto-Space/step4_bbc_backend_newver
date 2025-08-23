@@ -21,7 +21,6 @@ from app.services.storage import storage_service
 
 # Routers
 from app.routers import auth, user, video, coach, upload, transcription, line, location
-from app_b.api import router as b_router  #ユーザー認証用追加
 
 load_dotenv()
 
@@ -68,7 +67,6 @@ app.include_router(upload.router,         prefix="/api/v1",       tags=["upload"
 app.include_router(transcription.router,  prefix="/api/v1",       tags=["transcription"])
 app.include_router(line.router, prefix="/api/v1/line", tags=["line"])
 app.include_router(location.router)
-app.include_router(b_router, prefix="/api/v1/b", tags=["app_b_login"])
 
 # ---- Health / Root ----
 @app.get("/")
