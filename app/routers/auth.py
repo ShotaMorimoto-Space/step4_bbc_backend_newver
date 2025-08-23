@@ -147,7 +147,7 @@ async def login_any(
             print(f"パスワード検証中...")
             if verify_password(form.password, u.password_hash):
                 print(f"パスワード検証成功")
-                expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+                expires = timedelta(minutes=settings.access_token_expire_minutes)
                 token = create_access_token({"sub": str(u.user_id), "role": "user"}, expires)
                 print(f"トークン生成成功: {token[:20]}...")
                 return {"access_token": token, "token_type": "bearer", "role": "user"}
@@ -165,7 +165,7 @@ async def login_any(
             print(f"パスワード検証中...")
             if verify_password(form.password, c.password_hash):
                 print(f"パスワード検証成功")
-                expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+                expires = timedelta(minutes=settings.access_token_expire_minutes)
                 token = create_access_token({"sub": str(c.coach_id), "role": "coach"}, expires)
                 print(f"トークン生成成功: {token[:20]}...")
                 return {"access_token": token, "token_type": "bearer", "role": "coach"}
