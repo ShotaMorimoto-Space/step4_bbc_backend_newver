@@ -24,7 +24,7 @@ class AIService:
         openai.api_key = self.api_key
         self.client = openai.OpenAI(api_key=self.api_key)
 
-    async def summarize_coach_comment(self, comment: str, max_length: int = 200) -> str:
+    def summarize_coach_comment(self, comment: str, max_length: int = 200) -> str:
         """Summarize coach comment using OpenAI GPT"""
         # ★ 追加: 無効化時はフォールバック
         if not getattr(self, "enabled", False):
@@ -54,7 +54,7 @@ class AIService:
             print(f"AI summarization failed: {e}")
             return comment[:max_length] + "..." if len(comment) > max_length else comment
 
-    async def analyze_swing_section(self, section_data: dict) -> dict:
+    def analyze_swing_section(self, section_data: dict) -> str:
         """Analyze swing section data to suggest tags or improvements"""
         # ★ 追加: 無効化時は既定レスポンス
         if not getattr(self, "enabled", False):
@@ -121,7 +121,7 @@ class AIService:
             print(f"AI analysis failed: {e}")
             return {"suggested_tag": "other", "reasoning": "AI分析が利用できませんでした", "full_analysis": ""}
 
-    async def summarize_overall_feedback(self, feedback: str, max_length: int = 300) -> str:
+    def summarize_overall_feedback(self, feedback: str, max_length: int = 300) -> str:
         """Summarize overall feedback about the golf swing"""
         # ★ 追加: 無効化時はフォールバック
         if not getattr(self, "enabled", False):
@@ -151,7 +151,7 @@ class AIService:
             print(f"AI overall feedback summarization failed: {e}")
             return feedback[:max_length] + "..." if len(feedback) > max_length else feedback
 
-    async def summarize_training_menu(self, training_menu: str, max_length: int = 300) -> str:
+    def summarize_training_menu(self, training_menu: str, max_length: int = 300) -> str:
         """Summarize next training menu suggestions"""
         # ★ 追加: 無効化時はフォールバック
         if not getattr(self, "enabled", False):

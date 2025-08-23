@@ -26,7 +26,7 @@ from sqlalchemy import select
 router = APIRouter(tags=["videos"])
 
 @router.get("/video/{video_id}", response_model=VideoResponse)
-async def get_video_details(
+def get_video_details(
     video_id: UUID,
     db: Session = Depends(get_database),
 ):
@@ -34,7 +34,7 @@ async def get_video_details(
     Get detailed information about a specific video
     """
     try:
-        video = await video_crud.get_video(db, video_id)
+        video = video_crud.get_video(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
         return video
@@ -44,7 +44,7 @@ async def get_video_details(
         raise HTTPException(status_code=500, detail=f"動画詳細の取得に失敗しました: {str(e)}")
 
 @router.get("/video/{video_id}/with-sections", response_model=VideoWithSectionsResponse)
-async def get_video_with_sections(
+def get_video_with_sections(
     video_id: UUID,
     db: Session = Depends(get_database),
 ):
@@ -52,7 +52,7 @@ async def get_video_with_sections(
     Get video with all coaching sections and comments
     """
     try:
-        video = await video_crud.get_video_with_sections(db, video_id)
+        video = video_crud.get_video_with_sections(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
 
@@ -77,7 +77,7 @@ async def get_video_with_sections(
         raise HTTPException(status_code=500, detail=f"動画とセクション情報の取得に失敗しました: {str(e)}")
 
 @router.get("/video/{video_id}/feedback-summary")
-async def get_video_feedback_summary(
+def get_video_feedback_summary(
     video_id: UUID,
     db: Session = Depends(get_database),
 ):
@@ -85,7 +85,7 @@ async def get_video_feedback_summary(
     Summarize feedback for a video
     """
     try:
-        video = await video_crud.get_video_with_sections(db, video_id)
+        video = video_crud.get_video_with_sections(db, video_id)
         if not video:
             raise HTTPException(status_code=404, detail="動画が見つかりません")
 
@@ -127,7 +127,7 @@ async def get_video_feedback_summary(
         raise HTTPException(status_code=500, detail=f"フィードバック要約の取得に失敗しました: {str(e)}")
 
 @router.get("/videos", response_model=List[VideoResponse])
-async def get_all_videos(
+def get_all_videos(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     db: Session = Depends(get_database),
@@ -138,14 +138,14 @@ async def get_all_videos(
     try:
         # sections を一緒にロードしたいときは get_all_videos_with_sections を使うが、
         # レスポンスモデルが VideoResponse のためここでは基本情報のみ返す想定
-        videos = await video_crud.get_all_videos_with_sections(db, skip, limit)
+        videos = video_crud.get_all_videos_with_sections(db, skip, limit)
         # VideoResponse でシリアライズできるのでそのまま返却
         return videos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"全動画一覧の取得に失敗しました: {str(e)}")
 
 @router.get("/videos/search")
-async def search_videos(
+def search_videos(
     user_id: Optional[str] = Query(None, description="User ID (uses default if not provided)"),
     club_type: Optional[str] = Query(None, description="Filter by club type"),
     swing_form: Optional[str] = Query(None, description="Filter by swing form"),
@@ -159,7 +159,7 @@ async def search_videos(
         actual_user_id = user_id if user_id else get_default_user_id()
 
         # ユーザーの全動画（必要に応じて最適化可）
-        videos = await video_crud.get_videos_by_user(db, UUID(actual_user_id))
+        videos = video_crud.get_videos_by_user(db, UUID(actual_user_id))
 
         filtered = []
         for v in videos:
@@ -189,7 +189,7 @@ async def search_videos(
 
 # --- セッション作成 ---
 @router.post("/video/{video_id}/session", response_model=CoachingSessionResponse)
-async def create_session(
+def create_session(
     video_id: UUID,
     payload: CoachingSessionCreate,
     db: Session = Depends(get_database),
@@ -204,8 +204,8 @@ async def create_session(
             coach_id=payload.coach_id,
         )
         db.add(new_session)
-        await db.commit()
-        await db.refresh(new_session)
+        db.commit()
+        db.refresh(new_session)
         return new_session
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"セッション作成に失敗しました: {str(e)}")
@@ -213,7 +213,7 @@ async def create_session(
 
 # --- 動画に紐づくセッション一覧 ---
 @router.get("/video/{video_id}/sessions", response_model=List[CoachingSessionResponse])
-async def list_sessions_for_video(
+def list_sessions_for_video(
     video_id: UUID,
     db: Session = Depends(get_database),
 ):
@@ -221,7 +221,7 @@ async def list_sessions_for_video(
     Get all coaching sessions for a specific video
     """
     try:
-        result = await db.execute(
+        result = db.execute(
             select(models.CoachingSession).where(models.CoachingSession.video_id == video_id)
         )
         return result.scalars().all()
@@ -231,14 +231,14 @@ async def list_sessions_for_video(
 
 # --- セッション詳細 ---
 @router.get("/session/{session_id}", response_model=CoachingSessionResponse)
-async def get_session(
+def get_session(
     session_id: UUID,
     db: Session = Depends(get_database),
 ):
     """
     Get details of a specific session
     """
-    session = await db.get(models.CoachingSession, session_id)
+    session = db.get(models.CoachingSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="セッションが見つかりません")
     return session
@@ -246,7 +246,7 @@ async def get_session(
 
 # --- セッション更新 ---
 @router.put("/session/{session_id}", response_model=CoachingSessionResponse)
-async def update_session(
+def update_session(
     session_id: UUID,
     payload: CoachingSessionUpdate,
     db: Session = Depends(get_database),
@@ -254,31 +254,31 @@ async def update_session(
     """
     Update session status or info
     """
-    session = await db.get(models.CoachingSession, session_id)
+    session = db.get(models.CoachingSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="セッションが見つかりません")
 
     for key, value in payload.dict(exclude_unset=True).items():
         setattr(session, key, value)
 
-    await db.commit()
-    await db.refresh(session)
+    db.commit()
+    db.refresh(session)
     return session
 
 
 # --- セッション削除 (任意) ---
 @router.delete("/session/{session_id}")
-async def delete_session(
+def delete_session(
     session_id: UUID,
     db: Session = Depends(get_database),
 ):
     """
     Delete a coaching session (if allowed)
     """
-    session = await db.get(models.CoachingSession, session_id)
+    session = db.get(models.CoachingSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="セッションが見つかりません")
 
-    await db.delete(session)
-    await db.commit()
+    db.delete(session)
+    db.commit()
     return {"message": "セッションを削除しました"}

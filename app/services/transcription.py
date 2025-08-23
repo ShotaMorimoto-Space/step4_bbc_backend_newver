@@ -39,7 +39,7 @@ class TranscriptionService:
                 self.use_dummy = True
                 self.client = None
 
-    async def transcribe_audio(self, audio_file: BinaryIO, language: str = "ja") -> str:
+    def transcribe_audio(self, audio_file: BinaryIO, language: str = "ja") -> str:
         """
         Transcribe audio file using OpenAI Whisper
         """
@@ -73,7 +73,7 @@ class TranscriptionService:
             except Exception:
                 pass
 
-    async def transcribe_audio_with_timestamps(self, audio_file: BinaryIO, language: str = "ja") -> dict:
+    def transcribe_audio_with_timestamps(self, audio_file: BinaryIO, language: str = "ja") -> dict:
         """
         Transcribe audio with timestamp information
         """
@@ -126,7 +126,7 @@ class TranscriptionService:
             except Exception:
                 pass
 
-    async def validate_audio_format(self, audio_file: BinaryIO) -> bool:
+    def validate_audio_format(self, audio_file: BinaryIO) -> bool:
         """
         Validate if audio file format is supported by Whisper
         """

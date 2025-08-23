@@ -38,7 +38,7 @@ def get_my_videos(
         raise HTTPException(status_code=500, detail=f"動画一覧の取得に失敗しました: {str(e)}")
 
 @router.get("/my-reservations", response_model=List[CoachingReservationResponse])
-async def get_my_reservations(
+def get_my_reservations(
     user_id: Optional[str] = Query(None, description="User ID (uses default if not provided)"),
     db: Session = Depends(get_database),
 ):
@@ -55,7 +55,7 @@ async def get_my_reservations(
         raise HTTPException(status_code=500, detail=f"予約一覧の取得に失敗しました: {str(e)}")
 
 @router.post("/create-reservation", response_model=CoachingReservationResponse)
-async def create_coaching_reservation(
+def create_coaching_reservation(
     reservation: CoachingReservationCreate,
     db: Session = Depends(get_database),
 ):
@@ -69,7 +69,7 @@ async def create_coaching_reservation(
         raise HTTPException(status_code=500, detail=f"予約の作成に失敗しました: {str(e)}")
 
 @router.put("/reservation/{session_id}", response_model=CoachingReservationResponse)
-async def update_coaching_reservation(
+def update_coaching_reservation(
     session_id: UUID,
     reservation_update: CoachingReservationUpdate,
     db: Session = Depends(get_database),
@@ -90,7 +90,7 @@ async def update_coaching_reservation(
         raise HTTPException(status_code=500, detail=f"予約の更新に失敗しました: {str(e)}")
 
 @router.get("/reservation/{session_id}", response_model=CoachingReservationResponse)
-async def get_reservation_details(
+def get_reservation_details(
     session_id: UUID,
     db: Session = Depends(get_database),
 ):

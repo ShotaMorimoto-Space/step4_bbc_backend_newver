@@ -53,7 +53,7 @@ def get_openai_client() -> Optional["OpenAIClientType"]:
 
 
 @router.post("/transcribe-audio")
-async def transcribe_audio(
+def transcribe_audio(
     audio: UploadFile = File(...),
     type: Optional[str] = Form("general"),
     video_filename: Optional[str] = Form(None),

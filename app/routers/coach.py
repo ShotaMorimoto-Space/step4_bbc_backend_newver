@@ -20,7 +20,7 @@ router = APIRouter()
 
 # アドバイスデータ保存・取得用のエンドポイント
 @router.post("/save-advices/{video_id}")
-async def save_advices(
+def save_advices(
     video_id: str,
     advices: List[Dict[str, Any]],
     db: Session = Depends(get_database)
@@ -53,7 +53,7 @@ async def save_advices(
         raise HTTPException(status_code=500, detail=f"アドバイスデータの保存に失敗しました: {str(e)}")
 
 @router.get("/get-advices/{video_id}")
-async def get_advices(
+def get_advices(
     video_id: str,
     db: Session = Depends(get_database)
 ):
@@ -82,7 +82,7 @@ async def get_advices(
         raise HTTPException(status_code=500, detail=f"アドバイスデータの取得に失敗しました: {str(e)}")
 
 @router.post("/save-markup-image")
-async def save_markup_image(
+def save_markup_image(
     image_data: str = Form(...),
     filename: str = Form(...),
     original_url: str = Form(...),
@@ -121,7 +121,7 @@ async def save_markup_image(
         raise HTTPException(status_code=500, detail=f"マークアップ画像の保存に失敗しました: {str(e)}")
 
 @router.get("/get-markup-image/{filename}")
-async def get_markup_image(
+def get_markup_image(
     filename: str,
     db: Session = Depends(get_database)
 ):
@@ -152,7 +152,7 @@ async def get_markup_image(
         raise HTTPException(status_code=500, detail=f"マークアップ画像の取得に失敗しました: {str(e)}")
 
 @router.post("/create-section-group/{video_id}", response_model=SectionGroupResponse)
-async def create_section_group(
+def create_section_group(
     video_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -190,7 +190,7 @@ async def create_section_group(
         raise HTTPException(status_code=500, detail=f"セクショングループの作成に失敗しました: {str(e)}")
 
 @router.post("/add-section/{section_group_id}", response_model=SwingSectionResponse)
-async def add_swing_section(
+def add_swing_section(
     section_group_id: UUID,
     start_sec: float = Form(...),
     end_sec: float = Form(...),
@@ -283,7 +283,7 @@ async def add_swing_section(
         raise HTTPException(status_code=500, detail=f"セクションの追加に失敗しました: {str(e)}")
 
 @router.post("/add-coach-comment/{section_id}", response_model=CoachCommentResponse)
-async def add_coach_comment(
+def add_coach_comment(
     section_id: UUID,
     audio_file: UploadFile = File(...),
     coach_id: Optional[str] = Form(None),
@@ -340,7 +340,7 @@ async def add_coach_comment(
         raise HTTPException(status_code=500, detail=f"コーチコメントの追加に失敗しました: {str(e)}")
 
 @router.put("/update-section/{section_id}", response_model=SwingSectionResponse)
-async def update_swing_section(
+def update_swing_section(
     section_id: UUID,
     section_update: SwingSectionUpdate,
     db: Session = Depends(get_database)
@@ -371,7 +371,7 @@ async def update_swing_section(
         raise HTTPException(status_code=500, detail=f"セクションの更新に失敗しました: {str(e)}")
 
 @router.get("/section/{section_id}", response_model=SwingSectionResponse)
-async def get_swing_section(
+def get_swing_section(
     section_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -393,7 +393,7 @@ async def get_swing_section(
         raise HTTPException(status_code=500, detail=f"セクション情報の取得に失敗しました: {str(e)}")
 
 @router.get("/sections/{section_group_id}", response_model=List[SwingSectionResponse])
-async def get_sections_by_group(
+def get_sections_by_group(
     section_group_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -410,7 +410,7 @@ async def get_sections_by_group(
         raise HTTPException(status_code=500, detail=f"セクション一覧の取得に失敗しました: {str(e)}")
 
 @router.delete("/section/{section_id}")
-async def delete_swing_section(
+def delete_swing_section(
     section_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -445,7 +445,7 @@ async def delete_swing_section(
         raise HTTPException(status_code=500, detail=f"セクションの削除に失敗しました: {str(e)}")
 
 @router.post("/analyze-section/{section_id}")
-async def analyze_swing_section(
+def analyze_swing_section(
     section_id: UUID,
     db: Session = Depends(get_database)
 ):
@@ -484,7 +484,7 @@ async def analyze_swing_section(
         raise HTTPException(status_code=500, detail=f"セクション分析に失敗しました: {str(e)}")
 
 @router.post("/add-overall-feedback/{section_group_id}", response_model=OverallFeedbackResponse)
-async def add_overall_feedback(
+def add_overall_feedback(
     section_group_id: UUID,
     audio_file: UploadFile = File(...),
     feedback_type: str = Form(...),  # "overall" or "next_training"
@@ -558,7 +558,7 @@ async def add_overall_feedback(
         raise HTTPException(status_code=500, detail=f"総評の追加に失敗しました: {str(e)}")
 
 @router.get("/overall-feedback/{section_group_id}", response_model=OverallFeedbackResponse)
-async def get_overall_feedback(
+def get_overall_feedback(
     section_group_id: UUID,
     db: Session = Depends(get_database)
 ):
