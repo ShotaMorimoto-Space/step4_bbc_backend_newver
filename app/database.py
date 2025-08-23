@@ -7,8 +7,10 @@ from app.core.config import settings
 DATABASE_URL = (
     f"mysql+pymysql://{settings.database_username}:{settings.database_password}"
     f"@{settings.database_host}:{settings.database_port}/{settings.database_name}"
-    f"?ssl_mode={settings.database_ssl_mode}"
+    "?ssl=true"
     f"&ssl_ca={settings.database_ssl_ca}"
+    "&ssl_verify_cert=true"
+    "&ssl_verify_identity=true"
 )
 
 # --- エンジン作成 ---
