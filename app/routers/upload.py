@@ -107,11 +107,50 @@ def upload_video(
             if thumbnail_file:
                 # フロントエンドから送信されたサムネイルを使用
                 logger.info("フロントエンドから送信されたサムネイルを使用")
+                
+                # ファイルの内容を読み込み
+                thumbnail_content = thumbnail_file.file.read()
+                logger.info(f"サムネイルファイル読み込み完了: {len(thumbnail_content)} bytes")
+                
+                # ファイルポインタを先頭に戻す
+                thumbnail_file.file.seek(0)
+                
                 thumbnail_url = storage_service.upload_image_with_exact_name(
-                    thumbnail_file.file.read(),
+                    thumbnail_content,
                     f"{thumbnail_base_name}.jpg"
                 )
                 logger.info(f"フロントエンドサムネイルアップロード完了: {thumbnail_url}")
+                
+                # 保存されたURLの詳細ログ
+                logger.info(f"=== サムネイル保存詳細 ===")
+                logger.info(f"生成されたファイル名: {thumbnail_base_name}.jpg")
+                logger.info(f"保存されたURL: {thumbnail_url}")
+                logger.info(f"URLの長さ: {len(thumbnail_url)}")
+                
+                # URLの解析
+                try:
+                    from urllib.parse import urlparse
+                    parsed_url = urlparse(thumbnail_url)
+                    logger.info(f"URL解析結果:")
+                    logger.info(f"  プロトコル: {parsed_url.scheme}")
+                    logger.info(f"  ホスト: {parsed_url.netloc}")
+                    logger.info(f"  パス: {parsed_url.path}")
+                    logger.info(f"  ファイル名: {parsed_url.path.split('/')[-1]}")
+                except Exception as url_error:
+                    logger.error(f"URL解析エラー: {url_error}")
+                
+                # 実際のBlobの存在確認
+                try:
+                    from app.services.storage import storage_service
+                    blob_path = f"{thumbnail_base_name}.jpg"
+                    logger.info(f"Blobパス: {blob_path}")
+                    
+                    # ファイルの存在確認（list_filesで確認）
+                    files = storage_service.list_files(prefix=blob_path)
+                    logger.info(f"Blob存在確認結果: {files}")
+                    
+                except Exception as blob_error:
+                    logger.error(f"Blob確認エラー: {blob_error}")
             else:
                 # バックエンドでサムネイル生成
                 logger.info("サムネイル生成開始...")
@@ -147,6 +186,25 @@ def upload_video(
             "swing_note": swing_note
         }
         logger.info(f"動画データ: {video_data}")
+        
+        # サムネイルURLの最終確認
+        if thumbnail_url:
+            logger.info(f"=== データベース保存前の最終確認 ===")
+            logger.info(f"保存されるサムネイルURL: {thumbnail_url}")
+            
+            # 実際のBlobにアクセス可能かテスト
+            try:
+                import requests
+                test_response = requests.head(thumbnail_url, timeout=5)
+                logger.info(f"サムネイルURLアクセステスト: {test_response.status_code}")
+                if test_response.status_code == 200:
+                    logger.info("✅ サムネイルURLは正常にアクセス可能")
+                else:
+                    logger.warning(f"⚠️ サムネイルURLアクセス不可: {test_response.status_code}")
+            except Exception as test_error:
+                logger.error(f"❌ サムネイルURLアクセステスト失敗: {test_error}")
+        else:
+            logger.warning("⚠️ サムネイルURLがNoneです")
         
         # Create video in database
         from app.schemas import VideoCreate

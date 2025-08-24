@@ -226,14 +226,34 @@ def get_user_videos_summary(
             club = video.club_type or "未分類"
             if club not in videos_by_club:
                 videos_by_club[club] = []
-            videos_by_club[club].append({
+            
+            # サムネイルURLの検証とログ
+            thumbnail_info = {
                 "video_id": str(video.video_id),
                 "thumbnail_url": video.thumbnail_url,
                 "upload_date": video.upload_date,
                 "club_type": video.club_type,
                 "swing_form": video.swing_form,
                 "has_feedback": bool(video.section_groups)
-            })
+            }
+            
+            # サムネイルURLの詳細ログ（最初の5件のみ）
+            if len(videos_by_club.get(club, [])) < 5:
+                print(f"サムネイルURL詳細 - Video {video.video_id}: {video.thumbnail_url}")
+                if video.thumbnail_url:
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(video.thumbnail_url)
+                        print(f"  - プロトコル: {parsed.scheme}")
+                        print(f"  - ホスト: {parsed.netloc}")
+                        print(f"  - パス: {parsed.path}")
+                        print(f"  - 長さ: {len(video.thumbnail_url)}")
+                    except Exception as e:
+                        print(f"  - URL解析エラー: {e}")
+                else:
+                    print("  - サムネイルURLなし")
+            
+            videos_by_club[club].append(thumbnail_info)
 
         # 最新の動画（最大5件）
         recent_videos = sorted(
