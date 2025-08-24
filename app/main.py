@@ -64,6 +64,57 @@ app.include_router(location.router)
 def root():
     return {"message": "Golf Swing Coaching API is running"}
 
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時の処理"""
+    try:
+        print("=== アプリケーション起動処理開始 ===")
+        
+        # データベース接続の確認
+        from app.database import get_db
+        from app.models import User
+        
+        # データベースセッションを取得
+        db = next(get_db())
+        try:
+            # profile_picture_urlカラムをTEXT型に変更
+            from sqlalchemy import text
+            print("profile_picture_urlカラムの修正を開始...")
+            
+            # カラムの現在の型を確認
+            result = db.execute(text("""
+                SELECT COLUMN_TYPE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'users' 
+                AND COLUMN_NAME = 'profile_picture_url'
+            """))
+            current_type = result.fetchone()
+            
+            if current_type:
+                print(f"現在のカラム型: {current_type[0]}")
+                
+                # カラムがVARCHARの場合のみTEXTに変更
+                if 'varchar' in current_type[0].lower():
+                    print("profile_picture_urlカラムをTEXT型に変更中...")
+                    db.execute(text("ALTER TABLE users MODIFY COLUMN profile_picture_url TEXT"))
+                    db.commit()
+                    print("profile_picture_urlカラムの修正完了")
+                else:
+                    print("profile_picture_urlカラムは既にTEXT型です")
+            else:
+                print("profile_picture_urlカラムが見つかりません")
+                
+        except Exception as db_error:
+            print(f"データベース修正エラー: {str(db_error)}")
+            db.rollback()
+        finally:
+            db.close()
+            
+        print("=== アプリケーション起動処理完了 ===")
+        
+    except Exception as e:
+        print(f"起動処理エラー: {str(e)}")
+
 @app.get("/health")
 def health_check():
     try:
@@ -107,6 +158,77 @@ def health_check():
             "status": "unhealthy",
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
+        }
+
+@app.post("/api/v1/fix-database")
+def fix_database():
+    """データベース修正用エンドポイント"""
+    try:
+        print("=== データベース修正開始 ===")
+        
+        # データベース接続の確認
+        from app.database import get_db
+        
+        # データベースセッションを取得
+        db = next(get_db())
+        try:
+            # profile_picture_urlカラムをTEXT型に変更
+            from sqlalchemy import text
+            print("profile_picture_urlカラムの修正を開始...")
+            
+            # カラムの現在の型を確認
+            result = db.execute(text("""
+                SELECT COLUMN_TYPE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'users' 
+                AND COLUMN_NAME = 'profile_picture_url'
+            """))
+            current_type = result.fetchone()
+            
+            if current_type:
+                print(f"現在のカラム型: {current_type[0]}")
+                
+                # カラムがVARCHARの場合のみTEXTに変更
+                if 'varchar' in current_type[0].lower():
+                    print("profile_picture_urlカラムをTEXT型に変更中...")
+                    db.execute(text("ALTER TABLE users MODIFY COLUMN profile_picture_url TEXT"))
+                    db.commit()
+                    print("profile_picture_urlカラムの修正完了")
+                    return {
+                        "status": "success",
+                        "message": "profile_picture_urlカラムをTEXT型に変更しました",
+                        "previous_type": current_type[0],
+                        "new_type": "TEXT"
+                    }
+                else:
+                    print("profile_picture_urlカラムは既にTEXT型です")
+                    return {
+                        "status": "already_fixed",
+                        "message": "profile_picture_urlカラムは既にTEXT型です",
+                        "current_type": current_type[0]
+                    }
+            else:
+                print("profile_picture_urlカラムが見つかりません")
+                return {
+                    "status": "error",
+                    "message": "profile_picture_urlカラムが見つかりません"
+                }
+                
+        except Exception as db_error:
+            print(f"データベース修正エラー: {str(db_error)}")
+            db.rollback()
+            return {
+                "status": "error",
+                "message": f"データベース修正エラー: {str(db_error)}"
+            }
+        finally:
+            db.close()
+            
+    except Exception as e:
+        print(f"データベース修正エラー: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"データベース修正エラー: {str(e)}"
         }
 
 
