@@ -28,6 +28,7 @@ router = APIRouter()
 @router.post("/upload-video", response_model=VideoResponse)
 def upload_video(
     video_file: UploadFile = File(...),
+    thumbnail_file: Optional[UploadFile] = File(None),
     club_type: Optional[str] = Form(None),
     swing_form: Optional[str] = Form(None),
     swing_note: Optional[str] = Form(None),
@@ -39,6 +40,7 @@ def upload_video(
     Upload golf swing video
     
     - **video_file**: Video file to upload (MP4 recommended)
+    - **thumbnail_file**: Thumbnail image file (optional)
     - **club_type**: Type of club used (optional)
     - **swing_form**: Swing type (e.g., full_swing, chip) (optional)
     - **swing_note**: User's notes about the swing (optional)
@@ -102,23 +104,33 @@ def upload_video(
         # Generate thumbnail from video
         thumbnail_url = None
         try:
-            logger.info("サムネイル生成開始...")
-            # Create BytesIO object for thumbnail generation
-            video_bytes_for_thumbnail = BytesIO(video_content)
-            
-            thumbnail_data = thumbnail_service.generate_thumbnail(
-                video_bytes_for_thumbnail,
-                video_file.filename or "video.mp4"
-            )
-            logger.info("サムネイル生成完了、ストレージにアップロード中...")
-            
-            # Upload thumbnail with same base name as video
-            thumbnail_filename = f"{thumbnail_base_name}.jpg"
-            thumbnail_url = storage_service.upload_image_with_exact_name(
-                thumbnail_data,
-                thumbnail_filename
-            )
-            logger.info(f"サムネイルアップロード完了: {thumbnail_url}")
+            if thumbnail_file:
+                # フロントエンドから送信されたサムネイルを使用
+                logger.info("フロントエンドから送信されたサムネイルを使用")
+                thumbnail_url = storage_service.upload_image_with_exact_name(
+                    thumbnail_file.file.read(),
+                    f"{thumbnail_base_name}.jpg"
+                )
+                logger.info(f"フロントエンドサムネイルアップロード完了: {thumbnail_url}")
+            else:
+                # バックエンドでサムネイル生成
+                logger.info("サムネイル生成開始...")
+                # Create BytesIO object for thumbnail generation
+                video_bytes_for_thumbnail = BytesIO(video_content)
+                
+                thumbnail_data = thumbnail_service.generate_thumbnail(
+                    video_bytes_for_thumbnail,
+                    video_file.filename or "video.mp4"
+                )
+                logger.info("サムネイル生成完了、ストレージにアップロード中...")
+                
+                # Upload thumbnail with same base name as video
+                thumbnail_filename = f"{thumbnail_base_name}.jpg"
+                thumbnail_url = storage_service.upload_image_with_exact_name(
+                    thumbnail_data,
+                    thumbnail_filename
+                )
+                logger.info(f"バックエンドサムネイルアップロード完了: {thumbnail_url}")
         except Exception as e:
             logger.warning(f"サムネイル生成失敗: {e}")
             logger.warning(f"サムネイルエラー詳細: {traceback.format_exc()}")
