@@ -99,7 +99,7 @@ class UserResponse(BaseModel):
 # 簡易レスポンス
 # -------------------------
 class UserMini(BaseModel):
-    user_id: str
+    user_id: UUID
     username: str
     email: EmailStr
 
