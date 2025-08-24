@@ -141,7 +141,6 @@ def upload_video(
                 
                 # 実際のBlobの存在確認
                 try:
-                    from app.services.storage import storage_service
                     blob_path = f"{thumbnail_base_name}.jpg"
                     logger.info(f"Blobパス: {blob_path}")
                     
