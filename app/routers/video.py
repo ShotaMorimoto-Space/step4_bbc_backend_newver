@@ -187,6 +187,79 @@ def search_videos(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"動画検索に失敗しました: {str(e)}")
 
+@router.get("/user/{user_id}/videos", response_model=List[VideoResponse])
+def get_user_videos(
+    user_id: UUID,
+    db: Session = Depends(get_database),
+):
+    """
+    ユーザー固有の動画一覧を取得
+    """
+    try:
+        videos = video_crud.get_videos_by_user(db, user_id)
+        if not videos:
+            return []
+        return videos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ユーザー動画一覧の取得に失敗しました: {str(e)}")
+
+@router.get("/user/{user_id}/videos/summary")
+def get_user_videos_summary(
+    user_id: UUID,
+    db: Session = Depends(get_database),
+):
+    """
+    ユーザーの動画一覧のサマリー情報を取得（ホーム画面用）
+    """
+    try:
+        videos = video_crud.get_videos_by_user(db, user_id)
+        if not videos:
+            return {
+                "total_videos": 0,
+                "videos_by_club": {},
+                "recent_videos": []
+            }
+
+        # クラブ別にグループ化
+        videos_by_club = {}
+        for video in videos:
+            club = video.club_type or "未分類"
+            if club not in videos_by_club:
+                videos_by_club[club] = []
+            videos_by_club[club].append({
+                "video_id": str(video.video_id),
+                "thumbnail_url": video.thumbnail_url,
+                "upload_date": video.upload_date,
+                "club_type": video.club_type,
+                "swing_form": video.swing_form,
+                "has_feedback": bool(video.section_groups)
+            })
+
+        # 最新の動画（最大5件）
+        recent_videos = sorted(
+            [v for v in videos if v.upload_date],
+            key=lambda x: x.upload_date,
+            reverse=True
+        )[:5]
+
+        return {
+            "total_videos": len(videos),
+            "videos_by_club": videos_by_club,
+            "recent_videos": [
+                {
+                    "video_id": str(v.video_id),
+                    "thumbnail_url": v.thumbnail_url,
+                    "upload_date": v.upload_date,
+                    "club_type": v.club_type,
+                    "swing_form": v.swing_form,
+                    "has_feedback": bool(v.section_groups)
+                }
+                for v in recent_videos
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ユーザー動画サマリーの取得に失敗しました: {str(e)}")
+
 # --- セッション作成 ---
 @router.post("/video/{video_id}/session", response_model=CoachingSessionResponse)
 def create_session(
