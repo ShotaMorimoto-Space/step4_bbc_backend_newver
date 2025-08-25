@@ -65,7 +65,10 @@ class VideoCRUD:
     ) -> List[Video]:
         res = db.execute(
             select(Video)
-            .options(selectinload(Video.section_groups).selectinload(SectionGroup.sections))
+            .options(
+                selectinload(Video.section_groups).selectinload(SectionGroup.sections),
+                selectinload(Video.user)
+            )
             .order_by(Video.upload_date.desc())
             .offset(skip)
             .limit(limit)

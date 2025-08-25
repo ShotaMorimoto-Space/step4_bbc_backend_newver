@@ -92,6 +92,9 @@ class User(Base):
     job_title = Column(String(100), nullable=True)
     position = Column(String(100), nullable=True)
 
+    # リレーション
+    videos = relationship("Video", back_populates="user")
+
 # -------- Coaches --------
 class Coach(Base):
     __tablename__ = "coaches"
@@ -175,6 +178,7 @@ class Video(Base):
 
     section_groups = relationship("SectionGroup", back_populates="video")
     sessions = relationship("CoachingSession", back_populates="video")
+    user = relationship("User", back_populates="videos")
 
 
 

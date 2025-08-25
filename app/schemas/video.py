@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.utils.timezone import to_jst
 from .section import SectionGroupResponse, SwingSectionResponse
+from .user import UserResponse
 
 
 class VideoBase(BaseModel):
@@ -39,6 +40,7 @@ class VideoResponse(VideoBase):
     section_group_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+    user: Optional[UserResponse] = None
 
     @field_serializer("upload_date")
     def _ser_up(self, dt: datetime) -> datetime:
