@@ -28,11 +28,10 @@ def get_user_videos(
     Get all videos for a user with club grouping and recent videos
     """
     try:
-        from app.crud.video_crud import get_videos_by_user
-        from app.schemas.video import VideoResponse
+        from app.crud.video_crud import VideoCRUD
         
         # ユーザーの動画を取得
-        videos = get_videos_by_user(db, UUID(user_id), skip=0, limit=1000)
+        videos = VideoCRUD.get_videos_by_user(db, UUID(user_id), skip=0, limit=1000)
         
         # クラブ別にグループ化
         videos_by_club = {}
