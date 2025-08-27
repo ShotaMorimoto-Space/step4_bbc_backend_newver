@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -17,6 +18,63 @@ from app.schemas.reservation import (
 from app.crud import video_crud, coaching_reservation_crud
 
 router = APIRouter(tags=["users"])
+
+@router.get("/user/videos", response_model=dict)
+def get_user_videos(
+    user_id: str = Query(..., description="User ID"),
+    db: Session = Depends(get_database),
+):
+    """
+    Get all videos for a user with club grouping and recent videos
+    """
+    try:
+        from app.crud.video_crud import get_videos_by_user
+        from app.schemas.video import VideoResponse
+        
+        # ユーザーの動画を取得
+        videos = get_videos_by_user(db, UUID(user_id), skip=0, limit=1000)
+        
+        # クラブ別にグループ化
+        videos_by_club = {}
+        for video in videos:
+            club_type = video.club_type or "その他"
+            if club_type not in videos_by_club:
+                videos_by_club[club_type] = []
+            videos_by_club[club_type].append({
+                "video_id": str(video.video_id),
+                "thumbnail_url": video.thumbnail_url,
+                "upload_date": video.upload_date.isoformat() if video.upload_date else None,
+                "club_type": video.club_type,
+                "swing_form": video.swing_form,
+                "has_feedback": hasattr(video, 'feedback') and video.feedback is not None
+            })
+        
+        # 最近の動画（最新5件）
+        recent_videos = []
+        if videos:
+            sorted_videos = sorted(videos, key=lambda x: x.upload_date or datetime.min, reverse=True)
+            recent_videos = [
+                {
+                    "video_id": str(video.video_id),
+                    "thumbnail_url": video.thumbnail_url,
+                    "upload_date": video.upload_date.isoformat() if video.upload_date else None,
+                    "club_type": video.club_type,
+                    "swing_form": video.swing_form,
+                    "has_feedback": hasattr(video, 'feedback') and video.feedback is not None
+                }
+                for video in sorted_videos[:5]
+            ]
+        
+        return {
+            "total_videos": len(videos),
+            "videos_by_club": videos_by_club,
+            "recent_videos": recent_videos
+        }
+        
+    except ValueError:
+        raise HTTPException(status_code=400, detail="無効なユーザーIDです")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"動画一覧の取得に失敗しました: {str(e)}")
 
 @router.get("/my-videos", response_model=List[VideoResponse])
 def get_my_videos(
