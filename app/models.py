@@ -208,7 +208,7 @@ class CoachingSession(Base):
     video = relationship("Video", back_populates="sessions")
     coach = relationship("Coach")
     user = relationship("User")
-    section_groups = relationship("SectionGroup", back_populates="session")
+    # section_groups = relationship("SectionGroup", back_populates="session")  # リレーションシップを削除
 
 # -------- Coaching Reservation --------
 class CoachingReservation(Base):
@@ -233,7 +233,7 @@ class SectionGroup(Base):
 
     section_group_id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     video_id = Column(GUID(), ForeignKey("videos.video_id"), nullable=False)
-    session_id = Column(GUID(), ForeignKey("coaching_sessions.session_id"), nullable=True)
+    session_id = Column(String(255), nullable=True)  # 外部キー制約を削除し、文字列型に変更
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # 相手機能取り込み用（任意）
@@ -244,7 +244,7 @@ class SectionGroup(Base):
     feedback_created_at = Column(DateTime(timezone=True), nullable=True)
 
     video = relationship("Video", back_populates="section_groups")
-    session = relationship("CoachingSession", back_populates="section_groups")
+    # session = relationship("CoachingSession", back_populates="section_groups")  # リレーションシップを削除
     sections = relationship("SwingSection", back_populates="section_group")
 
 # -------- Swing Sections --------
