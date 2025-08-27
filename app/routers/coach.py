@@ -204,6 +204,59 @@ def create_section_group(
         print(f"Full error traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"セクショングループの作成に失敗しました: {str(e)}")
 
+# 簡素化されたセクショングループ作成API（フロントエンド用）
+@router.post("/create-section-group-simple/{video_id}")
+def create_section_group_simple(
+    video_id: UUID,
+    request_data: dict,
+    db: Session = Depends(get_database)
+):
+    """
+    Create a section group for a video (simplified version)
+    
+    - **video_id**: ID of the video to create sections for
+    - **request_data**: Simple request data with session_id
+    """
+    try:
+        # Verify video exists
+        video = video_crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="動画が見つかりません")
+        
+        # Check if section group already exists
+        existing_groups = section_group_crud.get_section_groups_by_video(db, video_id)
+        if existing_groups:
+            existing_group = existing_groups[0]
+            return {
+                "message": "既存のセクショングループが見つかりました",
+                "section_group_id": str(existing_group.section_group_id),
+                "session_id": existing_group.session_id
+            }
+        
+        # Create new section group
+        session_id = request_data.get('session_id', f"session_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}")
+        
+        section_group_data = SectionGroupCreate(
+            video_id=video_id,
+            session_id=session_id
+        )
+        
+        section_group = section_group_crud.create_section_group(db, section_group_data)
+        
+        if not section_group:
+            raise HTTPException(status_code=500, detail="セクショングループの作成に失敗しました")
+        
+        return {
+            "message": "セクショングループが正常に作成されました",
+            "section_group_id": str(section_group.section_group_id),
+            "session_id": section_group.session_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"セクショングループの作成に失敗しました: {str(e)}")
+
 @router.post("/add-section/{section_group_id}", response_model=SwingSectionResponse)
 def add_swing_section(
     section_group_id: UUID,
