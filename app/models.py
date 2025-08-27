@@ -44,7 +44,14 @@ class GUID(TypeDecorator):
         return None if value is None else str(value)
 
     def process_result_value(self, value, dialect):
-        return None if value is None else uuid.UUID(str(value))
+        if value is None:
+            return None
+        try:
+            return uuid.UUID(str(value))
+        except (ValueError, TypeError):
+            # UUID形式が不正な場合はNoneを返す
+            print(f"Warning: Invalid UUID format: {value}")
+            return None
 
 # -------- Enums --------
 class LocationType(str, enum.Enum):
@@ -124,7 +131,7 @@ class Coach(Base):
 
     # その他
     hourly_rate = Column(Integer, nullable=True)  # INT に統一
-    location_id = Column(GUID(), nullable=True)
+    location_id = Column(String(36), nullable=True)  # String(36)に統一
     golf_exp = Column(Integer, nullable=True)
     certification = Column(String(100), nullable=True)
     setting_1 = Column(String(50), nullable=True)
