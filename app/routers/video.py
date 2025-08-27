@@ -63,8 +63,7 @@ def get_video_with_sections(
         base = VideoResponse.model_validate(video, from_attributes=True).model_dump()
         response = {
             **base,
-            "section_group": SectionGroupResponse.model_validate(section_group, from_attributes=True).model_dump()
-            if section_group else None,
+            "section_groups": [SectionGroupResponse.model_validate(sg, from_attributes=True).model_dump() for sg in video.section_groups] if video.section_groups else [],
             "sections": [
                 SwingSectionResponse.model_validate(s, from_attributes=True).model_dump()
                 for s in (section_group.sections if section_group else [])
@@ -100,25 +99,42 @@ def get_video_feedback_summary(
             "total_sections": 0,
             "sections_with_comments": 0,
             "feedback_sections": [],
+            "has_overall_feedback": False,
+            "overall_feedback": None,
+            "overall_feedback_summary": None,
+            "next_training_menu": None,
+            "next_training_menu_summary": None,
         }
 
-        if video.section_groups and video.section_groups[0].sections:
-            sections = video.section_groups[0].sections
-            feedback_summary["total_sections"] = len(sections)
+        if video.section_groups and video.section_groups[0]:
+            section_group = video.section_groups[0]
+            
+            # 全体的なフィードバック情報を取得
+            if section_group.overall_feedback or section_group.next_training_menu:
+                feedback_summary["has_overall_feedback"] = True
+                feedback_summary["overall_feedback"] = section_group.overall_feedback
+                feedback_summary["overall_feedback_summary"] = section_group.overall_feedback_summary
+                feedback_summary["next_training_menu"] = section_group.next_training_menu
+                feedback_summary["next_training_menu_summary"] = section_group.next_training_menu_summary
+            
+            # セクション別フィードバック情報を取得
+            if section_group.sections:
+                sections = section_group.sections
+                feedback_summary["total_sections"] = len(sections)
 
-            for section in sections:
-                section_data: Dict[str, Any] = {
-                    "section_id": str(section.section_id),
-                    "time_range": f"{section.start_sec}-{section.end_sec}秒",
-                    "tags": section.tags or [],
-                    "has_comment": bool(section.coach_comment),
-                    "comment_summary": section.coach_comment_summary,
-                }
-                if section.coach_comment:
-                    feedback_summary["sections_with_comments"] += 1
-                    section_data["full_comment"] = section.coach_comment
+                for section in sections:
+                    section_data: Dict[str, Any] = {
+                        "section_id": str(section.section_id),
+                        "time_range": f"{section.start_sec}-{section.end_sec}秒",
+                        "tags": section.tags or [],
+                        "has_comment": bool(section.coach_comment),
+                        "comment_summary": section.coach_comment_summary,
+                    }
+                    if section.coach_comment:
+                        feedback_summary["sections_with_comments"] += 1
+                        section_data["full_comment"] = section.coach_comment
 
-                feedback_summary["feedback_sections"].append(section_data)
+                    feedback_summary["feedback_sections"].append(section_data)
 
         return feedback_summary
     except HTTPException:

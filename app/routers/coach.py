@@ -5,6 +5,7 @@ from uuid import UUID
 from decimal import Decimal
 import json
 import datetime
+from pydantic import BaseModel
 
 from app.deps import get_database, get_default_coach_id
 from app.schemas.section import (
@@ -15,6 +16,18 @@ from app.crud import section_group_crud, swing_section_crud, video_crud
 from app.services.ai import ai_service
 from app.services.transcription import transcription_service
 from app.services.storage import storage_service
+
+# テキストベースのフィードバック保存用スキーマ
+class TextFeedbackRequest(BaseModel):
+    overall_feedback: Optional[str] = None
+    overall_feedback_summary: Optional[str] = None
+    next_training_menu: Optional[str] = None
+    next_training_menu_summary: Optional[str] = None
+
+# 動画ステータス更新用スキーマ
+class VideoStatusUpdateRequest(BaseModel):
+    status: str
+    feedback_created_at: Optional[str] = None
 
 router = APIRouter()
 
@@ -587,3 +600,114 @@ def get_overall_feedback(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"総評の取得に失敗しました: {str(e)}")
+
+# テキストベースのフィードバック保存API（動画IDベース）
+@router.post("/add-text-feedback/{video_id}")
+def add_text_feedback(
+    video_id: UUID,
+    feedback_data: TextFeedbackRequest,
+    db: Session = Depends(get_database)
+):
+    """
+    Add text-based feedback for a video
+    
+    - **video_id**: ID of the video
+    - **feedback_data**: Text feedback data
+    """
+    try:
+        # 1. 動画の存在確認
+        video = video_crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="動画が見つかりません")
+        
+        # 2. セクショングループを取得または作成
+        section_groups = section_group_crud.get_section_groups_by_video(db, video_id)
+        section_group = None
+        
+        if section_groups:
+            # 既存のセクショングループを使用
+            section_group = section_groups[0]
+        else:
+            # 新しいセクショングループを作成
+            section_group_data = SectionGroupCreate(
+                video_id=video_id,
+                session_id=f"session_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+            )
+            section_group = section_group_crud.create_section_group(db, section_group_data)
+        
+        if not section_group:
+            raise HTTPException(status_code=500, detail="セクショングループの作成に失敗しました")
+        
+        # 3. フィードバックを更新
+        update_data = {}
+        if feedback_data.overall_feedback is not None:
+            update_data['overall_feedback'] = feedback_data.overall_feedback
+        if feedback_data.overall_feedback_summary is not None:
+            update_data['overall_feedback_summary'] = feedback_data.overall_feedback_summary
+        if feedback_data.next_training_menu is not None:
+            update_data['next_training_menu'] = feedback_data.next_training_menu
+        if feedback_data.next_training_menu_summary is not None:
+            update_data['next_training_menu_summary'] = feedback_data.next_training_menu_summary
+        
+        update_data['feedback_created_at'] = datetime.datetime.now()
+        
+        # 4. セクショングループを更新
+        updated_section_group = section_group_crud.update_section_group(db, section_group.section_group_id, update_data)
+        
+        if not updated_section_group:
+            raise HTTPException(status_code=500, detail="フィードバックの更新に失敗しました")
+        
+        # 5. 動画のステータスを「対応済み」に更新
+        video_update_data = {"is_reviewed": True}
+        updated_video = video_crud.update_video(db, video_id, video_update_data)
+        
+        return {
+            "message": "フィードバックが正常に保存されました",
+            "section_group_id": str(section_group.section_group_id),
+            "video_id": str(video_id),
+            "feedback": update_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"テキストフィードバックの保存に失敗しました: {str(e)}")
+
+@router.post("/update-video-status/{video_id}")
+def update_video_status(
+    video_id: UUID,
+    status_update: VideoStatusUpdateRequest,
+    db: Session = Depends(get_database)
+):
+    """
+    Update the status of a video.
+    
+    - **video_id**: ID of the video to update.
+    - **status_update**: New status and feedback_created_at.
+    """
+    try:
+        video = video_crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="動画が見つかりません")
+
+        update_data = {}
+        if status_update.status:
+            update_data['status'] = status_update.status
+        if status_update.feedback_created_at:
+            update_data['feedback_created_at'] = datetime.datetime.fromisoformat(status_update.feedback_created_at)
+
+        updated_video = video_crud.update_video(db, video_id, update_data)
+
+        if not updated_video:
+            raise HTTPException(status_code=500, detail="動画のステータス更新に失敗しました")
+
+        return {
+            "message": "動画のステータスが正常に更新されました",
+            "video_id": str(video_id),
+            "status": updated_video.status,
+            "feedback_created_at": updated_video.feedback_created_at
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"動画のステータス更新に失敗しました: {str(e)}")
