@@ -325,7 +325,7 @@ def list_sessions_for_video(
 # --- セッション詳細 ---
 @router.get("/session/{session_id}", response_model=CoachingSessionResponse)
 def get_session(
-    session_id: UUID,
+    session_id: str,  # UUIDからstr型に変更
     db: Session = Depends(get_database),
 ):
     """
@@ -340,7 +340,7 @@ def get_session(
 # --- セッション更新 ---
 @router.put("/session/{session_id}", response_model=CoachingSessionResponse)
 def update_session(
-    session_id: UUID,
+    session_id: str,  # UUIDからstr型に変更
     payload: CoachingSessionUpdate,
     db: Session = Depends(get_database),
 ):
@@ -362,7 +362,7 @@ def update_session(
 # --- セッション削除 (任意) ---
 @router.delete("/session/{session_id}")
 def delete_session(
-    session_id: UUID,
+    session_id: str,  # UUIDからstr型に変更
     db: Session = Depends(get_database),
 ):
     """

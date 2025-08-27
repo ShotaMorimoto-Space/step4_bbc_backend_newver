@@ -127,7 +127,7 @@ def create_coaching_reservation(
 
 @router.put("/reservation/{session_id}", response_model=CoachingReservationResponse)
 def update_coaching_reservation(
-    session_id: UUID,
+    session_id: str,  # UUIDからstr型に変更
     reservation_update: CoachingReservationUpdate,
     db: Session = Depends(get_database),
 ):
@@ -148,7 +148,7 @@ def update_coaching_reservation(
 
 @router.get("/reservation/{session_id}", response_model=CoachingReservationResponse)
 def get_reservation_details(
-    session_id: UUID,
+    session_id: str,  # UUIDからstr型に変更
     db: Session = Depends(get_database),
 ):
     """

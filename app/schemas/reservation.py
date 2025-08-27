@@ -30,7 +30,7 @@ class CoachingReservationUpdate(BaseModel):
     payment_status: Optional[PaymentStatus] = None
 
 class CoachingReservationResponse(CoachingReservationBase):
-    session_id: UUID
+    session_id: str  # UUIDからstr型に変更
     status: ReservationStatus
     payment_status: PaymentStatus
 
