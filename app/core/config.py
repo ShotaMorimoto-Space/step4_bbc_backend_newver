@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     line_reply_enabled: bool = True
 
     # ===== CORS =====
-    cors_allowed_origins: str = "http://localhost:3000,https://aps-bbc-02-dhdqd5eqgxa7f0hg.canadacentral-01.azurewebsites.net,http://localhost:3001,http://127.0.0.1:3000,https://step4-bbs-frontend-render.onrender.com"
+    cors_allowed_origins: str = "http://localhost:3000,https://aps-bbc-02-dhdqd5eqgxa7f0hg.canadacentral-01.azurewebsites.net,http://localhost:3001,http://127.0.0.1:3000,https://step4-bbs-frontend-render.onrender.com,https://*.onrender.com"
 
     model_config = SettingsConfigDict(
         env_file=".env",
