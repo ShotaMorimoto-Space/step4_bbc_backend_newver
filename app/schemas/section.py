@@ -60,7 +60,7 @@ class CoachingSessionUpdate(BaseModel):
 # ---- SectionGroup ----
 class SectionGroupBase(BaseModel):
     video_id: UUID
-    session_id: UUID   # ★ 追加: どのセッションに属するか
+    session_id: str   # ★ 文字列型に変更: セッション識別子として使用
 
 class SectionGroupCreate(SectionGroupBase):
     pass
