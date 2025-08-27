@@ -726,6 +726,59 @@ def add_text_feedback(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"テキストフィードバックの保存に失敗しました: {str(e)}")
 
+# フィードバック情報を取得するGETエンドポイント
+@router.get("/get-text-feedback/{video_id}")
+def get_text_feedback(
+    video_id: UUID,
+    db: Session = Depends(get_database)
+):
+    """
+    Get text-based feedback for a video
+    
+    - **video_id**: ID of the video
+    """
+    try:
+        # 1. 動画の存在確認
+        video = video_crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="動画が見つかりません")
+        
+        # 2. セクショングループからフィードバック情報を取得
+        section_groups = section_group_crud.get_section_groups_by_video(db, video_id)
+        
+        if not section_groups:
+            return {
+                "video_id": str(video_id),
+                "has_feedback": False,
+                "overall_feedback": None,
+                "overall_feedback_summary": None,
+                "next_training_menu": None,
+                "next_training_menu_summary": None,
+                "feedback_created_at": None,
+                "session_id": None,
+                "section_group_id": None
+            }
+        
+        # 最新のセクショングループを使用
+        section_group = section_groups[0]
+        
+        return {
+            "video_id": str(video_id),
+            "has_feedback": True,
+            "overall_feedback": section_group.overall_feedback,
+            "overall_feedback_summary": section_group.overall_feedback_summary,
+            "next_training_menu": section_group.next_training_menu,
+            "next_training_menu_summary": section_group.next_training_menu_summary,
+            "feedback_created_at": section_group.feedback_created_at,
+            "session_id": section_group.session_id,
+            "section_group_id": str(section_group.section_group_id)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"フィードバック情報の取得に失敗しました: {str(e)}")
+
 @router.post("/update-video-status/{video_id}")
 def update_video_status(
     video_id: UUID,
