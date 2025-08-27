@@ -154,6 +154,7 @@ def get_markup_image(
 @router.post("/create-section-group/{video_id}", response_model=SectionGroupResponse)
 def create_section_group(
     video_id: UUID,
+    section_group_data: SectionGroupCreate,
     db: Session = Depends(get_database)
 ):
     """
@@ -177,7 +178,8 @@ def create_section_group(
             # Continue to create new section group
         
         # Create new section group
-        section_group_data = SectionGroupCreate(video_id=video_id)
+        # video_idをリクエストボディのデータに設定
+        section_group_data.video_id = video_id
         section_group = section_group_crud.create_section_group(db, section_group_data)
         
         return section_group
