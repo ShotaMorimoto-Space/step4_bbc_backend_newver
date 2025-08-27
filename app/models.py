@@ -77,7 +77,7 @@ class User(Base):
     email = Column(String(255), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
     gender = Column(String(10), nullable=True)
-    line_user_id = Column(String(255), unique=True, nullable=True)
+    line_user_id = Column(String(255), nullable=True)  # unique制約を削除（空文字列の重複を許可）
 
     profile_picture_url = Column(Text, nullable=True)
     bio = Column(Text, nullable=True)
@@ -111,7 +111,7 @@ class Coach(Base):
     coachname = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    line_user_id = Column(String(255), unique=True, nullable=True)
+    line_user_id = Column(String(255), nullable=True)  # unique制約を削除（空文字列の重複を許可）
 
     profile_picture_url = Column(Text, nullable=True)
     bio = Column(Text, nullable=True)
