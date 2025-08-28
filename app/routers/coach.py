@@ -817,3 +817,79 @@ def update_video_status(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"動画のステータス更新に失敗しました: {str(e)}")
+
+# セクショングループを動画IDで取得するAPI
+@router.get("/get-section-groups-by-video/{video_id}")
+def get_section_groups_by_video(
+    video_id: UUID,
+    db: Session = Depends(get_database)
+):
+    """
+    Get section groups by video ID
+    
+    - **video_id**: ID of the video
+    """
+    try:
+        # 動画の存在確認
+        video = video_crud.get_video(db, video_id)
+        if not video:
+            raise HTTPException(status_code=404, detail="動画が見つかりません")
+        
+        # セクショングループを取得
+        section_groups = section_group_crud.get_section_groups_by_video(db, video_id)
+        
+        return section_groups
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"セクショングループの取得に失敗しました: {str(e)}")
+
+# セクショングループのフィードバックを更新するAPI
+@router.patch("/update-section-group-feedback/{section_group_id}")
+def update_section_group_feedback(
+    section_group_id: UUID,
+    feedback_data: TextFeedbackRequest,
+    db: Session = Depends(get_database)
+):
+    """
+    Update feedback for a section group
+    
+    - **section_group_id**: ID of the section group
+    - **feedback_data**: Feedback data to update
+    """
+    try:
+        # セクショングループの存在確認
+        section_group = section_group_crud.get_section_group(db, section_group_id)
+        if not section_group:
+            raise HTTPException(status_code=404, detail="セクショングループが見つかりません")
+        
+        # 更新データを準備
+        update_data = {}
+        if feedback_data.overall_feedback is not None:
+            update_data['overall_feedback'] = feedback_data.overall_feedback
+        if feedback_data.overall_feedback_summary is not None:
+            update_data['overall_feedback_summary'] = feedback_data.overall_feedback_summary
+        if feedback_data.next_training_menu is not None:
+            update_data['next_training_menu'] = feedback_data.next_training_menu
+        if feedback_data.next_training_menu_summary is not None:
+            update_data['next_training_menu_summary'] = feedback_data.next_training_menu_summary
+        
+        update_data['feedback_created_at'] = datetime.datetime.now()
+        
+        # セクショングループを更新
+        updated_section_group = section_group_crud.update_section_group(db, section_group_id, update_data)
+        
+        if not updated_section_group:
+            raise HTTPException(status_code=500, detail="フィードバックの更新に失敗しました")
+        
+        return {
+            "message": "フィードバックが正常に更新されました",
+            "section_group_id": str(section_group_id),
+            "feedback": update_data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"フィードバックの更新に失敗しました: {str(e)}")
