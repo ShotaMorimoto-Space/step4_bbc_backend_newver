@@ -204,18 +204,18 @@ def create_section_group(
         print(f"Full error traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"セクショングループの作成に失敗しました: {str(e)}")
 
-# 簡素化されたセクショングループ作成API（フロントエンド用）
-@router.post("/create-section-group-simple/{video_id}")
-def create_section_group_simple(
+# フロントエンド用のセクショングループ作成API（既存のAPIを修正）
+@router.post("/create-section-group-frontend/{video_id}")
+def create_section_group_frontend(
     video_id: UUID,
     request_data: dict,
     db: Session = Depends(get_database)
 ):
     """
-    Create a section group for a video (simplified version)
+    Create a section group for a video (frontend optimized version)
     
     - **video_id**: ID of the video to create sections for
-    - **request_data**: Simple request data with session_id
+    - **request_data**: Request data with session_id
     """
     try:
         # Verify video exists
